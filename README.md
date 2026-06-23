@@ -41,11 +41,21 @@ npm run dev
 
 Then open the local address Vite prints (default `http://localhost:3000`).
 
-## Screenshots
+## Screenshots <img width="1080" height="810" alt="image" src="https://github.com/user-attachments/assets/b3e489b9-35a8-4fcb-8fd9-6b819a4987d3" />
 
-[Add a screenshot or two of the Dashboard and Billing views here — they make the biggest impression for anyone skimming.]
+
+### Dashboard — Shop Floor Monitor
+Live view of active fab queues, work efficiency, outstanding ledger items, and machinery status.
+
+<!-- Drop your Dashboard screenshot directly below this line -->
+
+### Billing — Financial Overview
+Real-time ledger showing total billed, outstanding balance, and collected revenue, with searchable, filterable invoices.
+
+<!-- Drop your Billing screenshot directly below this line -->
 
 ## About
 
 Built by Otis Williams. [Optional: link to your portfolio, LinkedIn, or other projects.]
+
 
