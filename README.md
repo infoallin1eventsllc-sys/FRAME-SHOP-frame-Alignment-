@@ -1,5 +1,5 @@
 # FRAME-SHOP-frame-Alignment-
-# Frame Shop — Project & Billing Tracker
+
 
 A management interface that lets a custom framing shop track billing, materials and tools used on each job, and which team members are assigned to which projects — all in one place.
 
