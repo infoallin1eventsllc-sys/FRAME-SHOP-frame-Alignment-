@@ -5,22 +5,18 @@ import type { Customer } from '../../types';
 function blank(): Customer {
   return {
     id: `c${Date.now()}`,
-    name: '',
-    phone: '',
-    email: '',
-    vehicle: '',
-    outstandingBalance: 0,
-    lifetimeSpend: 0,
-    notes: '',
+    name: '', phone: '', email: '', vehicle: '',
+    outstandingBalance: 0, lifetimeSpend: 0, notes: '',
     joinedDate: new Date().toISOString().split('T')[0]!,
   };
 }
 
 export function CustomerModal({
-  open, customer, onClose, onSave,
+  open, customer, saving, onClose, onSave,
 }: {
   open: boolean;
   customer: Customer | null;
+  saving: boolean;
   onClose: () => void;
   onSave: (c: Customer) => void;
 }) {
@@ -41,7 +37,6 @@ export function CustomerModal({
           <label className={labelCls}>Full Name</label>
           <input className={inputCls} value={form.name} onChange={e => field('name', e.target.value)} placeholder="e.g. Marcus Webb" />
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Phone</label>
@@ -52,12 +47,10 @@ export function CustomerModal({
             <input type="email" className={inputCls} value={form.email} onChange={e => field('email', e.target.value)} />
           </div>
         </div>
-
         <div>
           <label className={labelCls}>Vehicle</label>
           <input className={inputCls} value={form.vehicle} onChange={e => field('vehicle', e.target.value)} placeholder="e.g. 2019 Ford F-250" />
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Outstanding Balance ($)</label>
@@ -68,25 +61,17 @@ export function CustomerModal({
             <input type="number" className={inputCls} value={form.lifetimeSpend} onChange={e => field('lifetimeSpend', Number(e.target.value))} />
           </div>
         </div>
-
         <div>
           <label className={labelCls}>Notes</label>
-          <textarea
-            rows={3}
-            className={`${inputCls} resize-none`}
-            value={form.notes}
-            onChange={e => field('notes', e.target.value)}
-            placeholder="Payment preferences, referral source, etc."
-          />
+          <textarea rows={3} className={`${inputCls} resize-none`}
+            value={form.notes} onChange={e => field('notes', e.target.value)}
+            placeholder="Payment preferences, referral source, etc." />
         </div>
-
         <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Cancel</button>
-          <button
-            onClick={() => onSave(form)}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
-          >
-            {customer ? 'Save Changes' : 'Add Customer'}
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors disabled:opacity-50">Cancel</button>
+          <button onClick={() => onSave(form)} disabled={saving}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black text-sm font-semibold rounded-lg transition-colors">
+            {saving ? 'Saving…' : customer ? 'Save Changes' : 'Add Customer'}
           </button>
         </div>
       </div>

@@ -24,10 +24,11 @@ function blank(): Project {
 }
 
 export function ProjectModal({
-  open, project, onClose, onSave,
+  open, project, saving, onClose, onSave,
 }: {
   open: boolean;
   project: Project | null;
+  saving: boolean;
   onClose: () => void;
   onSave: (p: Project) => void;
 }) {
@@ -49,20 +50,17 @@ export function ProjectModal({
           <label className={labelCls}>Title</label>
           <input className={inputCls} value={form.title} onChange={e => field('title', e.target.value)} placeholder="e.g. Frame notch & drop" />
         </div>
-
         <div>
           <label className={labelCls}>Customer</label>
           <select className={inputCls} value={form.customerId} onChange={e => field('customerId', e.target.value)}>
-            <option value="">Select customer...</option>
+            <option value="">Select customer…</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-
         <div>
           <label className={labelCls}>Vehicle</label>
           <input className={inputCls} value={form.vehicle} onChange={e => field('vehicle', e.target.value)} placeholder="e.g. 2019 Ford F-250" />
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Type</label>
@@ -77,7 +75,6 @@ export function ProjectModal({
             </select>
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Estimated Cost ($)</label>
@@ -88,7 +85,6 @@ export function ProjectModal({
             <input type="number" className={inputCls} value={form.actualCost} onChange={e => field('actualCost', Number(e.target.value))} />
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Start Date</label>
@@ -99,25 +95,17 @@ export function ProjectModal({
             <input type="date" className={inputCls} value={form.estimatedCompletion} onChange={e => field('estimatedCompletion', e.target.value)} />
           </div>
         </div>
-
         <div>
           <label className={labelCls}>Technician Notes</label>
-          <textarea
-            rows={3}
-            className={`${inputCls} resize-none`}
-            value={form.technicianNotes}
-            onChange={e => field('technicianNotes', e.target.value)}
-            placeholder="Progress notes, blockers, next steps..."
-          />
+          <textarea rows={3} className={`${inputCls} resize-none`}
+            value={form.technicianNotes} onChange={e => field('technicianNotes', e.target.value)}
+            placeholder="Progress notes, blockers, next steps…" />
         </div>
-
         <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Cancel</button>
-          <button
-            onClick={() => onSave(form)}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
-          >
-            {project ? 'Save Changes' : 'Add Build'}
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors disabled:opacity-50">Cancel</button>
+          <button onClick={() => onSave(form)} disabled={saving}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black text-sm font-semibold rounded-lg transition-colors">
+            {saving ? 'Saving…' : project ? 'Save Changes' : 'Add Build'}
           </button>
         </div>
       </div>

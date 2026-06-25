@@ -7,13 +7,28 @@ import { BillingPage } from './components/billing/BillingPage';
 import { ProjectsPage } from './components/projects/ProjectsPage';
 import { CustomersPage } from './components/customers/CustomersPage';
 
+function LoadingScreen() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-zinc-950">
+      <div className="text-center">
+        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center mx-auto mb-4">
+          <span className="text-black font-bold">FS</span>
+        </div>
+        <p className="text-sm text-zinc-500 animate-pulse">Loading shop data…</p>
+      </div>
+    </div>
+  );
+}
+
 function AppShell() {
-  const { activeView } = useApp();
+  const { activeView, loading } = useApp();
+
+  if (loading) return <LoadingScreen />;
 
   const pages: Record<string, React.ReactNode> = {
     dashboard: <DashboardPage />,
-    billing: <BillingPage />,
-    projects: <ProjectsPage />,
+    billing:   <BillingPage />,
+    projects:  <ProjectsPage />,
     customers: <CustomersPage />,
   };
 

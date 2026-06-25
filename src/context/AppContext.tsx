@@ -1,23 +1,24 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Customer, Project, Invoice, View } from '../types';
 import {
-  customers as initialCustomers,
-  projects as initialProjects,
-  invoices as initialInvoices,
-} from '../data/mockData';
+  fetchCustomers, insertCustomer, updateCustomer as updateCustomerDB,
+  fetchProjects,  insertProject,  updateProject  as updateProjectDB,
+  fetchInvoices,  insertInvoice,  updateInvoice  as updateInvoiceDB,
+} from '../lib/db';
 
 interface AppContextType {
   customers: Customer[];
   projects: Project[];
   invoices: Invoice[];
+  loading: boolean;
   activeView: View;
   setActiveView: (view: View) => void;
-  addCustomer: (customer: Customer) => void;
-  updateCustomer: (customer: Customer) => void;
-  addProject: (project: Project) => void;
-  updateProject: (project: Project) => void;
-  addInvoice: (invoice: Invoice) => void;
-  updateInvoice: (invoice: Invoice) => void;
+  addCustomer: (c: Customer) => Promise<void>;
+  updateCustomer: (c: Customer) => Promise<void>;
+  addProject: (p: Project) => Promise<void>;
+  updateProject: (p: Project) => Promise<void>;
+  addInvoice: (i: Invoice) => Promise<void>;
+  updateInvoice: (i: Invoice) => Promise<void>;
   getCustomerById: (id: string) => Customer | undefined;
   getProjectById: (id: string) => Project | undefined;
 }
@@ -25,44 +26,65 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [projects,  setProjects]  = useState<Project[]>([]);
+  const [invoices,  setInvoices]  = useState<Invoice[]>([]);
+  const [loading,   setLoading]   = useState(true);
   const [activeView, setActiveView] = useState<View>('dashboard');
 
-  const addCustomer = (c: Customer) => setCustomers(prev => [c, ...prev]);
-  const updateCustomer = (c: Customer) =>
-    setCustomers(prev => prev.map(x => (x.id === c.id ? c : x)));
+  useEffect(() => {
+    (async () => {
+      const [c, p, i] = await Promise.all([
+        fetchCustomers(),
+        fetchProjects(),
+        fetchInvoices(),
+      ]);
+      setCustomers(c);
+      setProjects(p);
+      setInvoices(i);
+      setLoading(false);
+    })();
+  }, []);
 
-  const addProject = (p: Project) => setProjects(prev => [p, ...prev]);
-  const updateProject = (p: Project) =>
-    setProjects(prev => prev.map(x => (x.id === p.id ? p : x)));
+  const addCustomer = async (c: Customer) => {
+    const saved = await insertCustomer(c);
+    setCustomers(prev => [saved, ...prev]);
+  };
+  const updateCustomer = async (c: Customer) => {
+    const saved = await updateCustomerDB(c);
+    setCustomers(prev => prev.map(x => (x.id === c.id ? saved : x)));
+  };
 
-  const addInvoice = (i: Invoice) => setInvoices(prev => [i, ...prev]);
-  const updateInvoice = (i: Invoice) =>
-    setInvoices(prev => prev.map(x => (x.id === i.id ? i : x)));
+  const addProject = async (p: Project) => {
+    const saved = await insertProject(p);
+    setProjects(prev => [saved, ...prev]);
+  };
+  const updateProject = async (p: Project) => {
+    const saved = await updateProjectDB(p);
+    setProjects(prev => prev.map(x => (x.id === p.id ? saved : x)));
+  };
+
+  const addInvoice = async (i: Invoice) => {
+    const saved = await insertInvoice(i);
+    setInvoices(prev => [saved, ...prev]);
+  };
+  const updateInvoice = async (i: Invoice) => {
+    const saved = await updateInvoiceDB(i);
+    setInvoices(prev => prev.map(x => (x.id === i.id ? saved : x)));
+  };
 
   const getCustomerById = (id: string) => customers.find(c => c.id === id);
-  const getProjectById = (id: string) => projects.find(p => p.id === id);
+  const getProjectById  = (id: string) => projects.find(p => p.id === id);
 
   return (
-    <AppContext.Provider
-      value={{
-        customers,
-        projects,
-        invoices,
-        activeView,
-        setActiveView,
-        addCustomer,
-        updateCustomer,
-        addProject,
-        updateProject,
-        addInvoice,
-        updateInvoice,
-        getCustomerById,
-        getProjectById,
-      }}
-    >
+    <AppContext.Provider value={{
+      customers, projects, invoices,
+      loading, activeView, setActiveView,
+      addCustomer, updateCustomer,
+      addProject,  updateProject,
+      addInvoice,  updateInvoice,
+      getCustomerById, getProjectById,
+    }}>
       {children}
     </AppContext.Provider>
   );
