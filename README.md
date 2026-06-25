@@ -41,7 +41,8 @@ npm run dev
 
 Then open the local address Vite prints (default `http://localhost:3000`).
 
-## Screenshots <img width="1080" height="810" alt="image" src="https://github.com/user-attachments/assets/b3e489b9-35a8-4fcb-8fd9-6b819a4987d3" />
+## Screenshots <img width="1080" height="810" alt="image" src="https://github.com/user-attachments/assets/28b23cab-faeb-45a3-bff8-ac53688889f3" />
+
 
 
 ### Dashboard — Shop Floor Monitor
