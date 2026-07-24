@@ -7,11 +7,22 @@ export interface Customer {
   name: string;
   phone: string;
   email: string;
-  outstandingBalance: number;
-  lifetimeSpend: number;
   notes: string;
   createdAt: string;
 }
+
+/** Fields the shop owner fills in when creating a customer. */
+export type NewCustomer = Omit<Customer, 'id' | 'createdAt'>;
+
+/** Fields the shop owner fills in when creating a project. */
+export type NewProject = Omit<Project, 'id' | 'actualCost' | 'completedDate'> & {
+  actualCost?: number;
+};
+
+/** Fields the shop owner fills in when creating an invoice. */
+export type NewInvoice = Omit<Invoice, 'id' | 'amount' | 'paidAmount' | 'createdAt'> & {
+  paidAmount?: number;
+};
 
 export interface LineItem {
   description: string;

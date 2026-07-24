@@ -1,5 +1,6 @@
 import { useShop } from '../context/ShopContext';
 import StatusBadge from './StatusBadge';
+import ExportCsvButton from './ExportCsvButton';
 import {
   totalBilled,
   totalCollected,
@@ -8,6 +9,7 @@ import {
   activeProjectsValue,
   overdueInvoices,
 } from '../utils/calculations';
+import { subtractMoney } from '../utils/money';
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -25,6 +27,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 export default function Dashboard() {
   const { invoices, projects, customers } = useShop();
   const overdue = overdueInvoices(invoices);
+  const activeBuilds = projects.filter((p) => p.status !== 'Delivered');
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
@@ -74,7 +77,7 @@ export default function Dashboard() {
                 <li key={inv.id} className="flex items-center justify-between text-sm">
                   <span className="text-red-700 font-medium">{customer?.name ?? 'Unknown'}</span>
                   <span className="text-red-600 font-semibold">
-                    {fmt(inv.amount - inv.paidAmount)}
+                    {fmt(subtractMoney(inv.amount, inv.paidAmount))}
                   </span>
                 </li>
               );
@@ -84,8 +87,23 @@ export default function Dashboard() {
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-800">Active Builds</h2>
+          <ExportCsvButton
+            filename="active-builds"
+            rows={activeBuilds.map((p) => ({
+              title: p.title,
+              customer: customers.find((c) => c.id === p.customerId)?.name ?? '',
+              status: p.status,
+              estimatedCost: p.estimatedCost,
+            }))}
+            columns={[
+              { key: 'title', label: 'Project' },
+              { key: 'customer', label: 'Customer' },
+              { key: 'status', label: 'Status' },
+              { key: 'estimatedCost', label: 'Est. Cost' },
+            ]}
+          />
         </div>
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
@@ -97,9 +115,14 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {projects
-              .filter((p) => p.status !== 'Delivered')
-              .map((p) => {
+            {activeBuilds.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-5 py-8 text-center text-gray-400">
+                  No active builds yet.
+                </td>
+              </tr>
+            ) : (
+              activeBuilds.map((p) => {
                 const customer = customers.find((c) => c.id === p.customerId);
                 return (
                   <tr key={p.id} className="hover:bg-gray-50">
@@ -111,7 +134,8 @@ export default function Dashboard() {
                     <td className="px-5 py-3 text-right text-gray-700">{fmt(p.estimatedCost)}</td>
                   </tr>
                 );
-              })}
+              })
+            )}
           </tbody>
         </table>
       </div>

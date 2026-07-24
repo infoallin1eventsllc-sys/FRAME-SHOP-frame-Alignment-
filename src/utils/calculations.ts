@@ -1,15 +1,16 @@
-import type { Invoice, Project, Customer, InvoiceStatus, BuildStatus } from '../types';
+import type { Invoice, Project, InvoiceStatus, BuildStatus } from '../types';
+import { sumMoney, subtractMoney, multiplyMoney } from './money';
 
 export function totalBilled(invoices: Invoice[]): number {
-  return invoices.reduce((sum, inv) => sum + inv.amount, 0);
+  return sumMoney(invoices.map((inv) => inv.amount));
 }
 
 export function totalCollected(invoices: Invoice[]): number {
-  return invoices.reduce((sum, inv) => sum + inv.paidAmount, 0);
+  return sumMoney(invoices.map((inv) => inv.paidAmount));
 }
 
 export function totalOutstanding(invoices: Invoice[]): number {
-  return invoices.reduce((sum, inv) => sum + (inv.amount - inv.paidAmount), 0);
+  return subtractMoney(totalBilled(invoices), totalCollected(invoices));
 }
 
 export function countByInvoiceStatus(invoices: Invoice[], status: InvoiceStatus): number {
@@ -22,13 +23,25 @@ export function countByBuildStatus(projects: Project[], status: BuildStatus): nu
 
 export function activeProjectsValue(projects: Project[]): number {
   const active: BuildStatus[] = ['Queued', 'In Progress', 'Parts Wait'];
-  return projects
-    .filter((p) => active.includes(p.status))
-    .reduce((sum, p) => sum + p.estimatedCost, 0);
+  return sumMoney(
+    projects.filter((p) => active.includes(p.status)).map((p) => p.estimatedCost),
+  );
 }
 
-export function customerLifetimeSpend(customers: Customer[]): number {
-  return customers.reduce((sum, c) => sum + c.lifetimeSpend, 0);
+/** Total amount a customer has actually paid, derived from their invoices. */
+export function customerLifetimeSpend(invoices: Invoice[], customerId: string): number {
+  return sumMoney(
+    invoices.filter((inv) => inv.customerId === customerId).map((inv) => inv.paidAmount),
+  );
+}
+
+/** What a customer currently owes, derived from their invoices. */
+export function customerOutstandingBalance(invoices: Invoice[], customerId: string): number {
+  const customerInvoices = invoices.filter((inv) => inv.customerId === customerId);
+  return subtractMoney(
+    sumMoney(customerInvoices.map((inv) => inv.amount)),
+    sumMoney(customerInvoices.map((inv) => inv.paidAmount)),
+  );
 }
 
 export function overdueInvoices(invoices: Invoice[]): Invoice[] {
@@ -44,5 +57,5 @@ export function invoicesForCustomer(invoices: Invoice[], customerId: string): In
 }
 
 export function calcLineItemTotal(lineItems: { quantity: number; unitPrice: number }[]): number {
-  return lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
+  return sumMoney(lineItems.map((li) => multiplyMoney(li.quantity, li.unitPrice)));
 }
