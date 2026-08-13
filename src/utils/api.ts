@@ -17,5 +17,13 @@ export function getApiUrl(path: string): string {
 
 export async function safeFetch(path: string, options?: RequestInit): Promise<Response> {
   const url = getApiUrl(path);
-  return fetch(url, options);
+  const token = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("shop_admin_token") : null;
+  const authHeaders: Record<string, string> = token ? { "x-shop-secret": token } : {};
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...authHeaders,
+      ...options?.headers,
+    },
+  });
 }

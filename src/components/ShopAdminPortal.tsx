@@ -664,14 +664,29 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === "1234" || pinInput.toLowerCase() === "paul" || pinInput === "admin" || pinInput === "") {
+    if (!pinInput) {
+      setPinError("Please enter your PIN.");
+      return;
+    }
+    try {
+      const res = await safeFetch("/api/auth/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: pinInput }),
+      });
+      if (!res.ok) {
+        setPinError("Invalid PIN. Access denied.");
+        return;
+      }
+      const data = await res.json();
+      sessionStorage.setItem("shop_admin_token", data.token);
       setIsAuthenticated(true);
       setPinError("");
       fetchBookings();
-    } else {
-      setPinError("Invalid PIN code. Try 1234");
+    } catch {
+      setPinError("Connection error. Check your network and try again.");
     }
   };
 
@@ -988,13 +1003,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
             <form onSubmit={handleLogin} className="space-y-4 text-left">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">
-                  Mechanic PIN Code (Default: 1234)
+                  Shop Owner PIN
                 </label>
                 <input
                   type="password"
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
-                  placeholder="1234"
+                  placeholder="Enter PIN"
                   className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 text-zinc-100 p-3 text-center text-lg font-mono tracking-widest focus:outline-none"
                   autoFocus
                 />
@@ -1017,7 +1032,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
             </form>
 
             <div className="pt-2 text-[11px] text-zinc-500">
-              Demo Access: Click "Unlock Shop Portal" or enter <span className="text-orange-500 font-mono">1234</span>
+              Contact the shop owner for PIN access.
             </div>
           </div>
         ) : (
