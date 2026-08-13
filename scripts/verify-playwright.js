@@ -2,7 +2,7 @@ import { chromium } from '@playwright/test';
 
 async function run() {
   console.log('🚀 Starting Playwright E2E verification...');
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath: '/opt/pw-browsers/chromium' });
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const page = await context.newPage();
 
@@ -21,10 +21,10 @@ async function run() {
     const headingText = await page.locator('h1').first().textContent();
     console.log(`✅ Hero Heading: "${headingText?.trim()}"`);
 
-    // Verify Shop Owner Portal button in top banner
-    const shopOwnerBtn = page.getByRole('button', { name: /Shop Owner Portal/i });
-    const isOwnerBtnVisible = await shopOwnerBtn.isVisible();
-    console.log(`✅ Shop Owner Portal button visible: ${isOwnerBtnVisible}`);
+    // Verify Book Inspection button in navbar
+    const bookBtn = page.getByRole('button', { name: /Book Inspection/i }).first();
+    const isBookBtnVisible = await bookBtn.isVisible();
+    console.log(`✅ Book Inspection button visible: ${isBookBtnVisible}`);
 
     // Verify Diagnostic Tool section
     const diagSection = page.locator('#diagnostic');
@@ -34,9 +34,12 @@ async function run() {
     const rakeSection = page.locator('#calculator');
     console.log(`✅ Rake & Trail section visible: ${await rakeSection.isVisible()}`);
 
-    // Test Shop Admin Portal PIN unlock
+    // Test Shop Admin Portal PIN unlock via footer Owner Login button
     console.log('2. Testing Shop Admin Portal unlock & Invoice Work Order system...');
-    await shopOwnerBtn.click();
+    const footer = page.locator('footer');
+    await footer.scrollIntoViewIfNeeded();
+    const ownerLoginBtn = page.getByRole('button', { name: /Owner Login/i });
+    await ownerLoginBtn.click();
     await page.waitForTimeout(500);
 
     const pinInput = page.getByPlaceholder('1234');
@@ -49,12 +52,12 @@ async function run() {
       await unlockBtn.click();
       await page.waitForTimeout(500);
 
-      const portalHeader = page.getByText(/APPOINTMENT COMMAND CENTER|SHOP MANAGEMENT PORTAL/i).first();
+      const portalHeader = page.getByRole('heading', { name: /COMMAND CENTER/i });
       console.log(`✅ Shop Admin Portal unlocked successfully: ${await portalHeader.isVisible()}`);
 
-      // Check Excel Export All button
-      const exportAllBtn = page.getByRole('button', { name: /Export All to Excel/i });
-      console.log(`✅ Excel Export All button visible: ${await exportAllBtn.isVisible()}`);
+      // Check Invoices Excel export button
+      const exportAllBtn = page.getByRole('button', { name: /Invoices Excel/i });
+      console.log(`✅ Invoices Excel button visible: ${await exportAllBtn.isVisible()}`);
 
       // Open Invoice modal if booking exists
       const editInvoiceBtn = page.getByRole('button', { name: /Edit Invoice|Create Owner Invoice/i }).first();
@@ -62,9 +65,9 @@ async function run() {
         await editInvoiceBtn.click();
         await page.waitForTimeout(500);
 
-        const btPrintBtn = page.getByRole('button', { name: 'Bluetooth Print', exact: true });
-        const excelSingleBtn = page.getByRole('button', { name: /Export to Excel/i });
-        const systemPrintBtn = page.getByRole('button', { name: /System Print/i });
+        const btPrintBtn = page.getByRole('button', { name: /Bluetooth Print/i }).first();
+        const excelSingleBtn = page.getByRole('button', { name: /Export to Excel/i }).first();
+        const systemPrintBtn = page.getByRole('button', { name: /System Print/i }).first();
 
         console.log(`✅ Invoice Modal Bluetooth Print button visible: ${await btPrintBtn.isVisible()}`);
         console.log(`✅ Invoice Modal Excel Export button visible: ${await excelSingleBtn.isVisible()}`);
