@@ -5,13 +5,61 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import Stripe from "stripe";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
+const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY     || "";
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+const APP_URL               = process.env.APP_URL               || `http://localhost:${PORT}`;
+
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production",
 }));
+
+// Stripe webhook needs the raw request body — must be registered BEFORE express.json()
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(200).json({ received: true });
+  const sig = req.headers["stripe-signature"] as string;
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+  } catch (err: any) {
+    return res.status(400).json({ error: `Webhook signature error: ${err.message}` });
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const bookingId = session.metadata?.bookingId;
+    if (bookingId) {
+      const bks = loadBookings();
+      const idx = bks.findIndex((b) => b.id === bookingId);
+      if (idx !== -1 && bks[idx].invoice) {
+        bks[idx].invoice!.paymentStatus = "deposit_paid";
+        saveBookings(bks);
+      }
+    }
+  }
+
+  if (event.type === "invoice.paid") {
+    const inv = event.data.object as Stripe.Invoice;
+    const bookingId = (inv.metadata as any)?.bookingId;
+    if (bookingId) {
+      const bks = loadBookings();
+      const idx = bks.findIndex((b) => b.id === bookingId);
+      if (idx !== -1 && bks[idx].invoice) {
+        bks[idx].invoice!.paymentStatus = "paid_in_full";
+        saveBookings(bks);
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json());
 
 const diagLimiter = rateLimit({
@@ -681,6 +729,104 @@ Return a JSON response matching strictly this JSON format without markdown code 
   } catch (err: any) {
     console.error("Gemini Diagnostic Error:", err);
     res.status(500).json({ error: "Failed to generate AI diagnostic analysis.", details: err?.message });
+  }
+});
+
+// -----------------------------------------------------------------------------
+// Stripe Payment Routes
+// -----------------------------------------------------------------------------
+
+// POST /api/stripe/checkout — Create Stripe Checkout session for booking deposit
+app.post("/api/stripe/checkout", bookingLimiter, async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ error: "Online payment not yet configured. Please call the shop to pay your deposit." });
+  }
+  try {
+    const { bookingId, amount, description, customerEmail } = req.body;
+    if (!amount || parseFloat(amount) <= 0) {
+      return res.status(400).json({ error: "Invalid deposit amount." });
+    }
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      customer_email: customerEmail || undefined,
+      line_items: [{
+        price_data: {
+          currency: "usd",
+          product_data: { name: description || "Service Deposit – The Frame Shop" },
+          unit_amount: Math.round(parseFloat(amount) * 100),
+        },
+        quantity: 1,
+      }],
+      mode: "payment",
+      success_url: `${APP_URL}?deposit=success&booking=${bookingId || ""}`,
+      cancel_url: `${APP_URL}?deposit=cancelled`,
+      metadata: { bookingId: bookingId || "" },
+    });
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (err: any) {
+    console.error("Stripe checkout error:", err);
+    res.status(500).json({ error: "Failed to create payment session.", details: err.message });
+  }
+});
+
+// POST /api/stripe/invoice/send — Create & email a Stripe invoice to a customer (owner only)
+app.post("/api/stripe/invoice/send", requireAdmin, async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ error: "Stripe is not configured. Add STRIPE_SECRET_KEY to your environment." });
+  }
+  try {
+    const { customerName, customerEmail, items, dueDays, bookingId, ticketNumber } = req.body;
+    if (!customerEmail || !items?.length) {
+      return res.status(400).json({ error: "Customer email and at least one line item are required." });
+    }
+
+    // Find or create the Stripe customer record
+    const existing = await stripe.customers.list({ email: customerEmail, limit: 1 });
+    let customerId: string;
+    if (existing.data.length > 0) {
+      customerId = existing.data[0].id;
+      if (customerName) await stripe.customers.update(customerId, { name: customerName });
+    } else {
+      const cust = await stripe.customers.create({ name: customerName || customerEmail, email: customerEmail });
+      customerId = cust.id;
+    }
+
+    // Create the invoice shell
+    const invoice = await stripe.invoices.create({
+      customer: customerId,
+      collection_method: "send_invoice",
+      days_until_due: dueDays || 30,
+      description: ticketNumber ? `The Frame Shop – Work Order ${ticketNumber}` : "The Frame Shop – Service Invoice",
+      metadata: { bookingId: bookingId || "" },
+      footer: "Thank you for trusting The Frame Shop with your motorcycle. Zero Tolerance. Pure Alignment.",
+    });
+
+    // Add each line item
+    for (const item of items as Array<{ description: string; amount: number }>) {
+      await stripe.invoiceItems.create({
+        customer: customerId,
+        invoice: invoice.id,
+        amount: Math.round(parseFloat(String(item.amount)) * 100),
+        currency: "usd",
+        description: item.description,
+      });
+    }
+
+    // Finalize then send — customer receives an email with a Pay Now link
+    const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
+    await stripe.invoices.sendInvoice(finalized.id);
+
+    console.log(`[STRIPE INVOICE SENT]: ${finalized.id} → ${customerEmail} | Ticket: ${ticketNumber || "N/A"}`);
+
+    res.json({
+      success: true,
+      invoiceId: finalized.id,
+      invoiceUrl: finalized.hosted_invoice_url,
+      invoiceNumber: finalized.number,
+    });
+  } catch (err: any) {
+    console.error("Stripe invoice send error:", err);
+    res.status(500).json({ error: "Failed to send Stripe invoice.", details: err.message });
   }
 });
 

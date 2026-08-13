@@ -26,6 +26,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [email, setEmail] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [bookingTicketNumber, setBookingTicketNumber] = useState<string>('');
+  const [bookingId, setBookingId] = useState<string>('');
+  const [depositLoading, setDepositLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (preSelectedServiceId) {
@@ -71,6 +73,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (res.ok) {
         const data = await res.json();
         setBookingTicketNumber(data.booking?.ticketNumber || ('FS-' + Math.floor(100000 + Math.random() * 900000)));
+        setBookingId(data.booking?.id || '');
         setIsSubmitted(true);
       } else {
         const errorData = await res.json();
@@ -84,6 +87,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setIsSubmitted(true);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePayDeposit = async () => {
+    setDepositLoading(true);
+    try {
+      const res = await safeFetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          amount: 75,
+          description: `$75 Inspection Deposit – ${currentServiceObj.title} (${bookingTicketNumber})`,
+          customerEmail: email,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Could not start payment. Please call the shop.');
+      }
+    } catch {
+      alert('Connection error. Please call the shop to pay your deposit.');
+    } finally {
+      setDepositLoading(false);
     }
   };
 
@@ -333,6 +362,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span className="text-zinc-500 uppercase font-bold tracking-wider">Contact Phone:</span>
                 <span className="text-orange-500 font-bold">{phone}</span>
               </div>
+            </div>
+
+            {/* Optional deposit payment */}
+            <div className="bg-zinc-950 border border-orange-600/40 p-4 rounded-none max-w-lg mx-auto text-left">
+              <div className="text-[11px] font-black uppercase tracking-widest text-orange-500 mb-1">
+                Secure Your Appointment
+              </div>
+              <p className="text-xs text-zinc-400 mb-3">
+                Speed up your lift time by paying your <strong className="text-zinc-100">$75 inspection deposit</strong> now. Paul will see your payment and prioritize your slot.
+              </p>
+              <button
+                type="button"
+                onClick={handlePayDeposit}
+                disabled={depositLoading}
+                className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-800 text-white font-black px-4 py-2.5 text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              >
+                {depositLoading ? 'Redirecting to Payment...' : '💳 Pay $75 Deposit Now'}
+              </button>
+              <p className="text-[10px] text-zinc-600 mt-2 text-center">Secure checkout via Stripe. No account required.</p>
             </div>
 
             <div className="p-4 rounded-none bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 text-left max-w-lg mx-auto flex items-start gap-2">

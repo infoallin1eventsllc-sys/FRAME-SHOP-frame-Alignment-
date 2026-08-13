@@ -533,6 +533,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   // Invoice Builder State
   const [activeInvoiceBooking, setActiveInvoiceBooking] = useState<Booking | null>(null);
   const [invoiceFormState, setInvoiceFormState] = useState<InternalInvoice | null>(null);
+  const [stripeInvoiceStatus, setStripeInvoiceStatus] = useState<{ loading: boolean; url: string | null; error: string | null }>({ loading: false, url: null, error: null });
 
   // POS Modal State
   const [isPOSModalOpen, setIsPOSModalOpen] = useState<boolean>(false);
@@ -723,6 +724,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
   const openInvoiceModal = (booking: Booking) => {
     setActiveInvoiceBooking(booking);
+    setStripeInvoiceStatus({ loading: false, url: null, error: null });
     if (booking.invoice) {
       setInvoiceFormState(booking.invoice);
     } else {
@@ -803,6 +805,49 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       }
     } catch {
       // Silent error handler
+    }
+  };
+
+  const handleSendStripeInvoice = async () => {
+    if (!activeInvoiceBooking || !invoiceFormState) return;
+    if (!activeInvoiceBooking.email) {
+      setStripeInvoiceStatus({ loading: false, url: null, error: "This booking has no email address on file. Add the customer's email before sending." });
+      return;
+    }
+    setStripeInvoiceStatus({ loading: true, url: null, error: null });
+    try {
+      // First save the invoice to the booking record
+      await safeFetch(`/api/bookings/${activeInvoiceBooking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice: invoiceFormState }),
+      });
+
+      // Send via Stripe — one line item per invoice item
+      const res = await safeFetch("/api/stripe/invoice/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: activeInvoiceBooking.name,
+          customerEmail: activeInvoiceBooking.email,
+          bookingId: activeInvoiceBooking.id,
+          ticketNumber: activeInvoiceBooking.ticketNumber,
+          dueDays: 30,
+          items: invoiceFormState.items.map((item) => ({
+            description: item.description,
+            amount: item.amount,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStripeInvoiceStatus({ loading: false, url: null, error: data.error || "Failed to send Stripe invoice." });
+        return;
+      }
+      setStripeInvoiceStatus({ loading: false, url: data.invoiceUrl, error: null });
+      fetchBookings();
+    } catch {
+      setStripeInvoiceStatus({ loading: false, url: null, error: "Network error. Check your connection and try again." });
     }
   };
 
@@ -2695,12 +2740,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveInvoiceBooking(null);
                     setInvoiceFormState(null);
+                    setStripeInvoiceStatus({ loading: false, url: null, error: null });
                   }}
                   className="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 px-4 py-2 text-xs uppercase font-bold"
                 >
@@ -2712,9 +2758,38 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   className="bg-orange-600 hover:bg-orange-500 text-white font-black px-6 py-2 text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-lg"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Owner Invoice</span>
+                  <span>Save Invoice</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendStripeInvoice}
+                  disabled={stripeInvoiceStatus.loading}
+                  className="bg-violet-700 hover:bg-violet-600 disabled:bg-zinc-800 text-white font-black px-6 py-2 text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-lg transition-colors"
+                  title="Save invoice & email customer a Stripe payment link"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>{stripeInvoiceStatus.loading ? "Sending..." : "Send via Stripe"}</span>
                 </button>
               </div>
+
+              {/* Stripe invoice send status */}
+              {stripeInvoiceStatus.error && (
+                <div className="w-full mt-3 p-3 bg-red-950/80 border border-red-600/60 text-red-300 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <span>{stripeInvoiceStatus.error}</span>
+                </div>
+              )}
+              {stripeInvoiceStatus.url && (
+                <div className="w-full mt-3 p-3 bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 text-xs flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-emerald-200">Invoice sent!</strong> Customer received an email with a secure payment link.{" "}
+                    <a href={stripeInvoiceStatus.url} target="_blank" rel="noopener noreferrer" className="underline text-emerald-400 hover:text-emerald-300 ml-1">
+                      View invoice →
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>
