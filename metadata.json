@@ -1,0 +1,6 @@
+{
+  "name": "The Frame Shop - Motorcycle Frame & Alignment",
+  "description": "Custom motorcycle frame straightening, laser power train alignment, suspension tuning, and precision repair in Spring, Texas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

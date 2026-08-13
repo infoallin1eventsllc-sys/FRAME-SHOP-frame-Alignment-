@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@media print {
+  /* Hide all UI shell elements during print */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the printable work order section */
+  #printable-work-order,
+  #printable-work-order * {
+    visibility: visible;
+  }
+
+  #printable-work-order {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+
+  /* Force background colors and text contrast for paper printing */
+  .no-print {
+    display: none !important;
+  }
+}
