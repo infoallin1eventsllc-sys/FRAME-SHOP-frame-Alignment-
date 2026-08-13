@@ -3,11 +3,30 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
+app.use(helmet());
 app.use(express.json());
+
+const diagLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many diagnostic requests. Please wait a moment and try again." },
+});
+
+const bookingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please slow down." },
+});
 
 // In-memory + local JSON file persistence for appointment bookings & transactions
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -318,7 +337,7 @@ app.get("/api/bookings", (req, res) => {
 });
 
 // POST /api/bookings - Create new appointment and dispatch notification digest
-app.post("/api/bookings", (req, res) => {
+app.post("/api/bookings", bookingLimiter, (req, res) => {
   try {
     const {
       serviceId,
@@ -565,7 +584,7 @@ app.patch("/api/transactions/:id/refund", (req, res) => {
 });
 
 // POST /api/diagnostic - AI Motorcycle Chassis & Handling Diagnostics powered by Gemini
-app.post("/api/diagnostic", async (req, res) => {
+app.post("/api/diagnostic", diagLimiter, async (req, res) => {
   try {
     const { motorcycleDetails, symptomDescription, speedRange } = req.body;
 
