@@ -28,6 +28,18 @@ const bookingLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
 });
 
+const SHOP_OWNER_PIN  = process.env.SHOP_OWNER_PIN  || "1234";
+const SHOP_API_SECRET = process.env.SHOP_API_SECRET || "";
+
+function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!SHOP_API_SECRET) return next();
+  const token = req.headers["x-shop-secret"];
+  if (token !== SHOP_API_SECRET) {
+    return res.status(401).json({ error: "Unauthorized." });
+  }
+  next();
+}
+
 // In-memory + local JSON file persistence for appointment bookings & transactions
 const DATA_DIR = path.join(process.cwd(), "data");
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
@@ -325,6 +337,15 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// POST /api/auth/pin - Validate owner PIN, return session token
+app.post("/api/auth/pin", (req, res) => {
+  const { pin } = req.body || {};
+  if (!pin || pin !== SHOP_OWNER_PIN) {
+    return res.status(401).json({ error: "Invalid PIN. Access denied." });
+  }
+  res.json({ token: SHOP_API_SECRET });
+});
+
 // GET /api/bookings - Fetch all appointments
 app.get("/api/bookings", (req, res) => {
   const bookings = loadBookings();
@@ -403,7 +424,7 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
 });
 
 // PATCH /api/bookings/:id - Update booking status, tech notes, or internal invoice
-app.patch("/api/bookings/:id", (req, res) => {
+app.patch("/api/bookings/:id", requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { status, techNotes, preferredDate, preferredTimeSlot, invoice } = req.body;
@@ -433,7 +454,7 @@ app.patch("/api/bookings/:id", (req, res) => {
 });
 
 // DELETE /api/bookings/:id - Delete booking
-app.delete("/api/bookings/:id", (req, res) => {
+app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     let bookings = loadBookings();
@@ -468,7 +489,7 @@ app.get("/api/transactions", (req, res) => {
 });
 
 // POST /api/transactions - Process & record new customer payment transaction
-app.post("/api/transactions", (req, res) => {
+app.post("/api/transactions", requireAdmin, (req, res) => {
   try {
     const {
       type,
@@ -557,7 +578,7 @@ app.post("/api/transactions", (req, res) => {
 });
 
 // PATCH /api/transactions/:id/refund - Issue refund or void transaction
-app.patch("/api/transactions/:id/refund", (req, res) => {
+app.patch("/api/transactions/:id/refund", requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
