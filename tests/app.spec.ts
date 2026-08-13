@@ -77,7 +77,7 @@ test.describe('The Frame Shop - Web Application End-to-End Tests', () => {
     await ownerLoginBtn.click();
 
     // PIN Authentication screen should appear
-    const pinInput = page.getByPlaceholder('1234');
+    const pinInput = page.getByPlaceholder('Enter PIN');
     await expect(pinInput).toBeVisible();
 
     // Enter default PIN

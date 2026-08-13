@@ -9,7 +9,9 @@ import rateLimit from "express-rate-limit";
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === "production",
+}));
 app.use(express.json());
 
 const diagLimiter = rateLimit({
