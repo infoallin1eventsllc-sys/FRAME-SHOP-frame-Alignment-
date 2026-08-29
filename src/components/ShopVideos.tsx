@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlayCircle, Video, Play } from 'lucide-react';
+import { PlayCircle, Video, Play, ExternalLink } from 'lucide-react';
 import { parseVideoUrl } from '../utils/videoEmbed';
 
 import { safeFetch } from '../utils/api';
@@ -134,15 +134,31 @@ export const ShopVideos: React.FC = () => {
                       {video.description}
                     </p>
                   )}
-                  {!isPlaying && (
-                    <button
-                      onClick={() => setPlayingId(video.id)}
-                      className="text-[11px] font-black uppercase tracking-widest text-orange-500 hover:text-orange-400 flex items-center gap-1.5 pt-1 cursor-pointer"
-                    >
-                      <Play className="w-3 h-3" />
-                      <span>Watch</span>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-4 pt-1">
+                    {!isPlaying && (
+                      <button
+                        onClick={() => setPlayingId(video.id)}
+                        className="text-[11px] font-black uppercase tracking-widest text-orange-500 hover:text-orange-400 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Play className="w-3 h-3" />
+                        <span>Watch</span>
+                      </button>
+                    )}
+                    {/* Some uploaders switch embedding off, and the player then
+                        refuses to play here however it is requested. Always give
+                        the viewer a way through to the source. */}
+                    {parsed.kind !== 'file' && (
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-orange-400 flex items-center gap-1.5 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Open original</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
               </article>
             );

@@ -2317,6 +2317,11 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                     hosted on the shop's own storage — no YouTube branding and no suggested
                     videos pulling customers away.
                   </p>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed border-l-2 border-zinc-800 pl-3">
+                    A YouTube link only plays here if its uploader allows embedding. Your own
+                    uploads allow it by default; someone else's video may show "Watch on
+                    YouTube" instead, which YouTube enforces and the site cannot override.
+                  </p>
 
                   {/* Shared title + description, used by both paths below */}
                   <form onSubmit={handleAddVideo} className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-3">
