@@ -50,7 +50,7 @@ import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types
 import { TransactionPOSModal } from "./TransactionPOSModal";
 import { safeFetch, getApiUrl } from "../utils/api";
 import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
-import { VIDEOS_KEY, readStoredVideos, ShopVideo } from "./ShopVideos";
+import { fetchVideos, ShopVideo } from "./ShopVideos";
 import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed";
 import {
   processImage,
@@ -514,7 +514,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
 
   // Shop video links (YouTube / Vimeo / direct file)
-  const [videos, setVideos] = useState<ShopVideo[]>(() => readStoredVideos());
+  const [videos, setVideos] = useState<ShopVideo[]>([]);
   const [videoUrlInput, setVideoUrlInput] = useState<string>('');
   const [videoTitleInput, setVideoTitleInput] = useState<string>('');
   const [videoDescInput, setVideoDescInput] = useState<string>('');
@@ -528,6 +528,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   useEffect(() => {
     if (!isAuthenticated) return;
     let cancelled = false;
+
     safeFetch('/api/videos/config')
       .then(r => (r.ok ? r.json() : null))
       .then(cfg => {
@@ -536,20 +537,37 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       .catch(() => {
         /* hosting simply stays unavailable; the paste-a-link path still works */
       });
+
+    fetchVideos().then(list => {
+      if (!cancelled) setVideos(list);
+    });
+
     return () => {
       cancelled = true;
     };
   }, [isAuthenticated]);
 
-  const persistVideos = (next: ShopVideo[], note: string) => {
+  /**
+   * Saves the published list to the server. It cannot live in this browser —
+   * customers are the audience, and browser storage is private to one device.
+   */
+  const persistVideos = async (next: ShopVideo[], note: string) => {
+    const previous = videos;
     setVideos(next);
     try {
-      localStorage.setItem(VIDEOS_KEY, JSON.stringify(next));
-      window.dispatchEvent(new Event('storage'));
+      const res = await safeFetch('/api/videos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error(`Save failed (${res.status}).`);
       window.dispatchEvent(new CustomEvent('shop_videos_updated'));
     } catch (e) {
       console.error(e);
-      alert('This browser ran out of local storage room, so the video list could not be saved.');
+      setVideos(previous); // don't leave the screen claiming a save that failed
+      alert(
+        'The video list could not be saved to the server, so nothing was published. Check the site is running and try again.'
+      );
       return;
     }
     setVideoMsg(note);

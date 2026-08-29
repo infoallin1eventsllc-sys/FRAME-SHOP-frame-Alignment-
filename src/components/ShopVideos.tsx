@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlayCircle, Video, Play } from 'lucide-react';
 import { parseVideoUrl } from '../utils/videoEmbed';
 
-export const VIDEOS_KEY = 'theframeshop_videos';
+import { safeFetch } from '../utils/api';
 
 export interface ShopVideo {
   id: string;
@@ -17,28 +17,36 @@ export interface ShopVideo {
   storageObject?: string;
 }
 
-export function readStoredVideos(): ShopVideo[] {
+/** The published list, as every visitor sees it. */
+export async function fetchVideos(): Promise<ShopVideo[]> {
   try {
-    const saved = localStorage.getItem(VIDEOS_KEY);
-    const parsed = saved ? JSON.parse(saved) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    const res = await safeFetch('/api/videos');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
 }
 
 export const ShopVideos: React.FC = () => {
-  const [videos, setVideos] = useState<ShopVideo[]>(() => readStoredVideos());
+  const [videos, setVideos] = useState<ShopVideo[]>([]);
   // Which card the viewer pressed play on. Iframes only mount after a click, so
   // a page with several videos doesn't pull in a player for each one on load.
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const sync = () => setVideos(readStoredVideos());
-    window.addEventListener('storage', sync);
+    let cancelled = false;
+    const sync = () => {
+      fetchVideos().then(list => {
+        if (!cancelled) setVideos(list);
+      });
+    };
+    sync();
+    // Fires when Paul saves from the admin portal in this same tab.
     window.addEventListener('shop_videos_updated', sync);
     return () => {
-      window.removeEventListener('storage', sync);
+      cancelled = true;
       window.removeEventListener('shop_videos_updated', sync);
     };
   }, []);

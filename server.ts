@@ -218,6 +218,79 @@ app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
 const DATA_DIR = path.join(process.cwd(), "data");
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
 const TRANSACTIONS_FILE = path.join(DATA_DIR, "transactions.json");
+const VIDEOS_FILE = path.join(DATA_DIR, "videos.json");
+
+/* ---------------------------------------------------------------------------
+ * The published video list.
+ *
+ * This has to live on the server, not in the owner's browser: the whole point
+ * of the section is that customers see what Paul posts, and browser storage is
+ * private to the one device that wrote it.
+ * ------------------------------------------------------------------------- */
+interface ShopVideoRecord {
+  id: string;
+  url: string;
+  title: string;
+  description?: string;
+  storageObject?: string;
+}
+
+function readVideos(): ShopVideoRecord[] {
+  try {
+    if (!fs.existsSync(VIDEOS_FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(VIDEOS_FILE, "utf-8"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error("[VIDEOS READ ERROR]", err);
+    return [];
+  }
+}
+
+function writeVideos(list: ShopVideoRecord[]) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(VIDEOS_FILE, JSON.stringify(list, null, 2));
+}
+
+/** Keeps a malformed or oversized payload from becoming the published list. */
+function sanitiseVideos(input: unknown): ShopVideoRecord[] | null {
+  if (!Array.isArray(input) || input.length > 60) return null;
+  const out: ShopVideoRecord[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") return null;
+    const { id, url, title, description, storageObject } = raw as Record<string, unknown>;
+    if (typeof id !== "string" || typeof url !== "string" || typeof title !== "string") return null;
+    if (!id || !url || !title || url.length > 2000 || title.length > 200) return null;
+    out.push({
+      id,
+      url,
+      title,
+      ...(typeof description === "string" && description ? { description: description.slice(0, 500) } : {}),
+      ...(typeof storageObject === "string" && storageObject ? { storageObject } : {}),
+    });
+  }
+  return out;
+}
+
+// Public — every visitor needs this to render the section.
+app.get("/api/videos", (_req, res) => {
+  res.json(readVideos());
+});
+
+// Owner only. The admin screen manages the whole ordered list, so it saves the
+// list wholesale; that covers add, remove and reorder in one route.
+app.put("/api/videos", requireAdmin, (req, res) => {
+  const cleaned = sanitiseVideos(req.body);
+  if (!cleaned) {
+    return res.status(400).json({ error: "Invalid video list." });
+  }
+  try {
+    writeVideos(cleaned);
+    res.json({ ok: true, count: cleaned.length });
+  } catch (err) {
+    console.error("[VIDEOS WRITE ERROR]", err);
+    res.status(500).json({ error: "Could not save the video list." });
+  }
+});
 
 interface InvoiceLineItem {
   id: string;
