@@ -52,6 +52,7 @@ import { safeFetch, getApiUrl } from "../utils/api";
 import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
 import { fetchVideos, ShopVideo } from "./ShopVideos";
 import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed";
+import { inspectVideoFile, titleFromFilename } from "../utils/videoFile";
 import {
   processImage,
   formatBytes,
@@ -676,15 +677,16 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     if (!file) return;
     e.target.value = "";
 
-    const title = videoTitleInput.trim() || file.name.replace(/\.[^.]+$/, "");
-    if (videoConfig && file.size > videoConfig.maxBytes) {
-      alert(
-        `That file is ${formatBytes(file.size)}, over the ${formatBytes(
-          videoConfig.maxBytes
-        )} limit. Export it at a smaller size, or post it to YouTube and paste the link instead.`
-      );
+    // Paul shouldn't have to name the file and then name it again.
+    const title = videoTitleInput.trim() || titleFromFilename(file.name);
+
+    // Catch the problems before the upload, not after minutes of waiting.
+    const report = await inspectVideoFile(file, videoConfig?.maxBytes ?? 200 * 1024 * 1024);
+    if (report.error) {
+      alert(report.error);
       return;
     }
+    if (report.warning) setVideoMsg(report.warning);
 
     setVideoUploadPct(0);
     setVideoUploading(true);
@@ -2312,15 +2314,10 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   </div>
 
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Give the video a title, then either upload the file straight from your
-                    phone or computer, or paste a YouTube / Vimeo link. Uploaded files are
-                    hosted on the shop's own storage — no YouTube branding and no suggested
-                    videos pulling customers away.
-                  </p>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed border-l-2 border-zinc-800 pl-3">
-                    A YouTube link only plays here if its uploader allows embedding. Your own
-                    uploads allow it by default; someone else's video may show "Watch on
-                    YouTube" instead, which YouTube enforces and the site cannot override.
+                    Pick a video from your computer, or paste a YouTube link. It goes live on
+                    the website as soon as it finishes, and every customer sees it. If a video
+                    won't work on some phones, you'll be told before it uploads and shown how
+                    to fix it.
                   </p>
 
                   {/* Shared title + description, used by both paths below */}
@@ -2351,7 +2348,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider">
-                          Title
+                          Title <span className="text-zinc-500 font-normal">(optional for uploads)</span>
                         </label>
                         <input
                           type="text"
