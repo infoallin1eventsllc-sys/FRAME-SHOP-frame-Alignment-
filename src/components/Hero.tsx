@@ -50,12 +50,12 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
           referrerPolicy="no-referrer"
           className="absolute inset-0 w-full h-full object-cover object-center scale-110 blur-2xl opacity-45"
         />
-        {/* The photo itself, whole and unzoomed, sitting right of the headline. */}
+        {/* The photo itself, whole and unzoomed, centred in the frame. */}
         <img
           src={heroImage}
           alt="Custom Harley Davidson motorcycle"
           referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-contain object-center lg:object-right opacity-95 filter contrast-110 saturate-110 brightness-105 transition-all duration-700"
+          className="absolute inset-0 w-full h-full object-contain object-center opacity-95 filter contrast-110 saturate-110 brightness-105 transition-all duration-700"
         />
         {/* Multi-directional gradient overlay tuned for high motorcycle visibility & text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/45 to-zinc-950/20" />
