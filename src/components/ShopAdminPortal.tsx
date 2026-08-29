@@ -46,6 +46,7 @@ import { SHOP_INFO, WORK_PROJECTS } from "../data/shopData";
 import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types";
 import { TransactionPOSModal } from "./TransactionPOSModal";
 import { safeFetch } from "../utils/api";
+import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
 import {
   connectBluetoothPrinter,
   sendPayloadToBluetoothPrinter,
@@ -421,6 +422,58 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   });
   const [paulUrlInput, setPaulUrlInput] = useState<string>('');
   const [paulMsg, setPaulMsg] = useState<string>('');
+
+  const [heroImage, setHeroImage] = useState<string>(() => {
+    try {
+      return localStorage.getItem(HERO_IMAGE_KEY) || DEFAULT_HERO_IMAGE;
+    } catch {
+      return DEFAULT_HERO_IMAGE;
+    }
+  });
+  const [heroUrlInput, setHeroUrlInput] = useState<string>('');
+  const [heroMsg, setHeroMsg] = useState<string>('');
+
+  const saveHeroImage = (newUrl: string) => {
+    setHeroImage(newUrl);
+    try {
+      localStorage.setItem(HERO_IMAGE_KEY, newUrl);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('hero_image_updated'));
+    } catch (e) {
+      console.error(e);
+    }
+    setHeroMsg('Landing page hero background updated!');
+    setTimeout(() => setHeroMsg(''), 3000);
+  };
+
+  const handleHeroFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 8 * 1024 * 1024) {
+        alert('File size exceeds 8MB limit.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const result = evt.target?.result as string;
+        if (result) saveHeroImage(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleHeroReset = () => {
+    setHeroImage(DEFAULT_HERO_IMAGE);
+    try {
+      localStorage.removeItem(HERO_IMAGE_KEY);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('hero_image_updated'));
+    } catch (e) {
+      console.error(e);
+    }
+    setHeroMsg('Hero background reset to shop default.');
+    setTimeout(() => setHeroMsg(''), 3000);
+  };
 
   const [galleryPhotos, setGalleryPhotos] = useState<Record<string, string>>(() => {
     try {
@@ -1587,7 +1640,110 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   </p>
                 </div>
 
-                {/* Section 1: Paul Heary's Website Biopic Photo */}
+                {/* Section 1: Landing Page Hero Background */}
+                <div className="bg-zinc-950 border border-orange-600/40 p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3 flex-wrap gap-2">
+                    <div>
+                      <div className="text-[10px] font-black uppercase text-orange-500 tracking-widest">
+                        Landing Page Headline Image
+                      </div>
+                      <h4 className="text-lg font-black text-zinc-100 uppercase italic">
+                        1. HERO BACKGROUND IMAGE (TOP OF HOMEPAGE)
+                      </h4>
+                    </div>
+                    {heroMsg && (
+                      <span className="text-xs font-bold text-orange-400 bg-orange-950/80 px-3 py-1 border border-orange-500/50 uppercase tracking-wider">
+                        ✓ {heroMsg}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                        Current Live Hero Background:
+                      </div>
+                      <div className="relative h-56 bg-zinc-900 border border-zinc-800 overflow-hidden">
+                        <img
+                          src={heroImage}
+                          alt="Hero background"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-2 left-2 bg-zinc-950/90 text-orange-500 text-[10px] font-black px-2 py-1 uppercase tracking-widest border border-zinc-800">
+                          Live On Website
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2 space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
+                          <Upload className="w-3.5 h-3.5 text-orange-500" />
+                          <span>Option A: Upload Hero Image from Device</span>
+                        </label>
+                        <label className="border-2 border-dashed border-zinc-800 hover:border-orange-600 bg-zinc-900/60 p-4 flex items-center justify-center gap-3 cursor-pointer transition-colors text-center group">
+                          <Upload className="w-5 h-5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
+                          <div>
+                            <div className="text-xs font-bold text-zinc-200 group-hover:text-white uppercase tracking-wider">
+                              Click to select image file from computer / device
+                            </div>
+                            <div className="text-[10px] text-zinc-500 mt-0.5">
+                              Wide landscape shots work best &mdash; JPG, PNG, WEBP (Max 8MB)
+                            </div>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleHeroFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
+                          <LinkIcon className="w-3.5 h-3.5 text-orange-500" />
+                          <span>Option B: Paste Web Image URL</span>
+                        </label>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (heroUrlInput.trim()) {
+                              saveHeroImage(heroUrlInput.trim());
+                              setHeroUrlInput("");
+                            }
+                          }}
+                          className="flex gap-2"
+                        >
+                          <input
+                            type="url"
+                            placeholder="https://example.com/motorcycle.jpg"
+                            value={heroUrlInput}
+                            onChange={(e) => setHeroUrlInput(e.target.value)}
+                            className="flex-1 bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-xs text-zinc-100 focus:outline-none focus:border-orange-600"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-orange-600 hover:bg-orange-500 text-white font-black px-5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer"
+                          >
+                            Apply
+                          </button>
+                        </form>
+                      </div>
+
+                      <button
+                        onClick={handleHeroReset}
+                        className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-orange-500 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Reset to shop default background</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Paul Heary's Website Biopic Photo */}
                 <div className="bg-zinc-950 border border-zinc-800 p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-zinc-800 pb-3 flex-wrap gap-2">
                     <div>
@@ -1595,7 +1751,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         Owner Identity Photo
                       </div>
                       <h4 className="text-lg font-black text-zinc-100 uppercase italic">
-                        1. PAUL HEARY BIOPIC PHOTO ("ABOUT PAUL" SECTION)
+                        2. PAUL HEARY BIOPIC PHOTO ("ABOUT PAUL" SECTION)
                       </h4>
                     </div>
                     {paulMsg && (
@@ -1709,7 +1865,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         Portfolio Build Gallery
                       </div>
                       <h4 className="text-lg font-black text-zinc-100 uppercase italic">
-                        2. CASE STUDY &amp; WORK GALLERY PHOTOS ("OUR WORK" SECTION)
+                        3. CASE STUDY &amp; WORK GALLERY PHOTOS ("OUR WORK" SECTION)
                       </h4>
                     </div>
                     {galleryMsg && (

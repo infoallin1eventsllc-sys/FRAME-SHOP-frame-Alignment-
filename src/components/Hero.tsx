@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SHOP_INFO } from '../data/shopData';
 import { Calendar, Compass, ShieldCheck, Wrench, ArrowRight, Award, MapPin, Phone } from 'lucide-react';
 import { Logo } from './Logo';
+
+export const HERO_IMAGE_KEY = 'theframeshop_hero_image';
+export const DEFAULT_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=85&w=2000';
 
 interface HeroProps {
   onOpenBooking: () => void;
@@ -9,15 +13,39 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
+  const [heroImage, setHeroImage] = useState<string>(() => {
+    try {
+      return localStorage.getItem(HERO_IMAGE_KEY) || DEFAULT_HERO_IMAGE;
+    } catch {
+      return DEFAULT_HERO_IMAGE;
+    }
+  });
+
+  useEffect(() => {
+    const sync = () => {
+      try {
+        setHeroImage(localStorage.getItem(HERO_IMAGE_KEY) || DEFAULT_HERO_IMAGE);
+      } catch {
+        setHeroImage(DEFAULT_HERO_IMAGE);
+      }
+    };
+    window.addEventListener('storage', sync);
+    window.addEventListener('hero_image_updated', sync);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('hero_image_updated', sync);
+    };
+  }, []);
+
   return (
     <section id="hero" className="relative min-h-[92vh] flex items-center pt-28 pb-16 bg-zinc-950 overflow-hidden font-sans">
       {/* Background Image with Dark Zinc Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=2000"
-          alt="Custom motorcycle in frame alignment shop"
+          src={heroImage}
+          alt="Custom Harley Davidson motorcycle"
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover object-center opacity-85 filter contrast-120 saturate-125 brightness-110 scale-105 transition-all duration-700"
+          className="w-full h-full object-cover object-center opacity-90 filter contrast-110 saturate-110 brightness-105 scale-105 transition-all duration-700"
         />
         {/* Multi-directional gradient overlay tuned for high motorcycle visibility & text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/45 to-zinc-950/20" />
