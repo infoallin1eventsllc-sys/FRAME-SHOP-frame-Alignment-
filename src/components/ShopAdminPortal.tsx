@@ -41,12 +41,17 @@ import {
   Camera,
   Upload,
   Link as LinkIcon,
+  Video as VideoIcon,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { SHOP_INFO, WORK_PROJECTS } from "../data/shopData";
 import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types";
 import { TransactionPOSModal } from "./TransactionPOSModal";
 import { safeFetch } from "../utils/api";
 import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
+import { VIDEOS_KEY, readStoredVideos, ShopVideo } from "./ShopVideos";
+import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed";
 import {
   processImage,
   formatBytes,
@@ -507,6 +512,81 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [galleryUrlInputs, setGalleryUrlInputs] = useState<Record<string, string>>({});
   const [galleryMsg, setGalleryMsg] = useState<string>('');
   const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
+
+  // Shop video links (YouTube / Vimeo / direct file)
+  const [videos, setVideos] = useState<ShopVideo[]>(() => readStoredVideos());
+  const [videoUrlInput, setVideoUrlInput] = useState<string>('');
+  const [videoTitleInput, setVideoTitleInput] = useState<string>('');
+  const [videoDescInput, setVideoDescInput] = useState<string>('');
+  const [videoMsg, setVideoMsg] = useState<string>('');
+
+  const persistVideos = (next: ShopVideo[], note: string) => {
+    setVideos(next);
+    try {
+      localStorage.setItem(VIDEOS_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('shop_videos_updated'));
+    } catch (e) {
+      console.error(e);
+      alert('This browser ran out of local storage room, so the video list could not be saved.');
+      return;
+    }
+    setVideoMsg(note);
+    setTimeout(() => setVideoMsg(''), 6000);
+  };
+
+  const handleAddVideo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const url = videoUrlInput.trim();
+    const title = videoTitleInput.trim();
+
+    if (!url || !title) {
+      alert('A video needs both a link and a title.');
+      return;
+    }
+    if (!isPlayable(url)) {
+      alert(
+        "That link isn't a video we can play. Paste a YouTube or Vimeo link — for example https://youtu.be/xxxxxxxxxxx"
+      );
+      return;
+    }
+    if (videos.some(v => v.url === url)) {
+      alert('That video is already on the site.');
+      return;
+    }
+
+    persistVideos(
+      [
+        ...videos,
+        {
+          id: `vid-${Date.now()}`,
+          url,
+          title,
+          description: videoDescInput.trim() || undefined,
+        },
+      ],
+      `"${title}" added to the website.`
+    );
+    setVideoUrlInput('');
+    setVideoTitleInput('');
+    setVideoDescInput('');
+  };
+
+  const handleRemoveVideo = (id: string) => {
+    const target = videos.find(v => v.id === id);
+    if (!target) return;
+    if (!confirm(`Remove "${target.title}" from the website?`)) return;
+    persistVideos(videos.filter(v => v.id !== id), `"${target.title}" removed.`);
+  };
+
+  const handleMoveVideo = (id: string, direction: -1 | 1) => {
+    const index = videos.findIndex(v => v.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= videos.length) return;
+    const next = [...videos];
+    [next[index], next[target]] = [next[target], next[index]];
+    persistVideos(next, 'Video order updated.');
+  };
 
   const savePaulPhoto = (newUrl: string, note?: string) => {
     setPaulPhoto(newUrl);
@@ -2077,6 +2157,183 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Section 4: Shop Video Links */}
+                <div className="bg-zinc-950 border border-zinc-800 p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3 flex-wrap gap-2">
+                    <div>
+                      <div className="text-[10px] font-black uppercase text-orange-500 tracking-widest">
+                        Your Own Shop Footage
+                      </div>
+                      <h4 className="text-lg font-black text-zinc-100 uppercase italic">
+                        4. SHOP VIDEOS ("SHOP VIDEO" SECTION)
+                      </h4>
+                    </div>
+                    {videoMsg && (
+                      <span className="text-xs font-bold text-orange-400 bg-orange-950/80 px-3 py-1 border border-orange-500/50 uppercase tracking-wider">
+                        ✓ {videoMsg}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    Post your video to YouTube (it can be Unlisted so it only shows here),
+                    then paste the link below. Videos are added by link rather than uploaded —
+                    a phone clip is far too large to store in the browser, and YouTube streams
+                    it properly on every device at no cost.
+                  </p>
+
+                  {/* Add form */}
+                  <form onSubmit={handleAddVideo} className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
+                        <LinkIcon className="w-3.5 h-3.5 text-orange-500" />
+                        <span>Video Link</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://youtu.be/..."
+                        value={videoUrlInput}
+                        onChange={(e) => setVideoUrlInput(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
+                      />
+                      {videoUrlInput.trim() && (
+                        <div
+                          className={`text-[10px] font-bold uppercase tracking-wider ${
+                            isPlayable(videoUrlInput) ? "text-emerald-400" : "text-red-400"
+                          }`}
+                        >
+                          {describeVideoUrl(videoUrlInput)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider">
+                          Title
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Road Glide frame straightening"
+                          value={videoTitleInput}
+                          onChange={(e) => setVideoTitleInput(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider">
+                          Short Description <span className="text-zinc-500 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Laser measurement before and after"
+                          value={videoDescInput}
+                          onChange={(e) => setVideoDescInput(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="bg-orange-600 hover:bg-orange-500 text-white font-black px-6 py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Video To Website</span>
+                    </button>
+                  </form>
+
+                  {/* Current list */}
+                  {videos.length === 0 ? (
+                    <div className="border border-dashed border-zinc-800 p-6 text-center space-y-1">
+                      <VideoIcon className="w-6 h-6 text-zinc-700 mx-auto" />
+                      <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                        No videos yet
+                      </div>
+                      <div className="text-[10px] text-zinc-600">
+                        The Shop Video section stays hidden on the website until you add one.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                        Live on the website ({videos.length}) — top to bottom order
+                      </div>
+                      {videos.map((vid, idx) => {
+                        const parsed = parseVideoUrl(vid.url);
+                        return (
+                          <div
+                            key={vid.id}
+                            className="bg-zinc-900 border border-zinc-800 p-3 flex items-center gap-3 flex-wrap sm:flex-nowrap"
+                          >
+                            <div className="w-24 h-14 bg-zinc-950 border border-zinc-800 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                              {parsed.thumbnailUrl ? (
+                                <img
+                                  src={parsed.thumbnailUrl}
+                                  alt=""
+                                  referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    e.currentTarget.hidden = true;
+                                  }}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <VideoIcon className="w-5 h-5 text-zinc-700" />
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-0.5">
+                              <div className="text-xs font-black uppercase italic text-zinc-100 truncate">
+                                {vid.title}
+                              </div>
+                              {vid.description && (
+                                <div className="text-[10px] text-zinc-400 truncate">{vid.description}</div>
+                              )}
+                              <a
+                                href={vid.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-zinc-500 hover:text-orange-500 font-mono truncate block"
+                              >
+                                {vid.url}
+                              </a>
+                            </div>
+
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveVideo(vid.id, -1)}
+                                disabled={idx === 0}
+                                aria-label="Move up"
+                                className="p-1.5 border border-zinc-800 text-zinc-400 hover:text-orange-500 hover:border-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveVideo(vid.id, 1)}
+                                disabled={idx === videos.length - 1}
+                                aria-label="Move down"
+                                className="p-1.5 border border-zinc-800 text-zinc-400 hover:text-orange-500 hover:border-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVideo(vid.id)}
+                                aria-label={`Remove ${vid.title}`}
+                                className="p-1.5 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : activeMainTab === "transactions" ? (

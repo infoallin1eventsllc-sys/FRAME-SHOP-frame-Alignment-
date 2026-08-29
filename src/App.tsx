@@ -7,6 +7,7 @@ import { DiagnosticTool } from './components/DiagnosticTool';
 import { RakeTrailCalculator } from './components/RakeTrailCalculator';
 import { WhyChooseUs } from './components/WhyChooseUs';
 import { OurWorkGallery } from './components/OurWorkGallery';
+import { ShopVideos } from './components/ShopVideos';
 import { AboutPaul } from './components/AboutPaul';
 import { Testimonials } from './components/Testimonials';
 import { FaqSection } from './components/FaqSection';
@@ -81,6 +82,9 @@ export default function App() {
       <OurWorkGallery
         onOpenBooking={() => handleOpenBookingWithService()}
       />
+
+      {/* Paul's own shop footage — renders nothing until he adds a video */}
+      <ShopVideos />
 
       {/* About Paul Hurey */}
       <AboutPaul
