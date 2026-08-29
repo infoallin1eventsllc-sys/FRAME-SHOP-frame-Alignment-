@@ -190,13 +190,6 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
               <p className="text-[11px] text-zinc-400 italic font-normal border-l-2 border-orange-600 pl-2.5 leading-relaxed">
                 "If I won't ride it at 90mph, it doesn't leave my shop."
               </p>
-
-              <button
-                onClick={() => onNavigate('services')}
-                className="w-full bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 font-extrabold py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer rounded-none border border-zinc-700"
-              >
-                Explore All Services
-              </button>
             </div>
           </div>
 
