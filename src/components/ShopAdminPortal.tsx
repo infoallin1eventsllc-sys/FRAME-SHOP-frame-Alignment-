@@ -492,7 +492,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     } catch (e) {
       console.error(e);
     }
-    setHeroMsg('Hero background reset to shop default.');
+    setHeroMsg('Hero photo removed — headline now shows on the plain dark background.');
     setTimeout(() => setHeroMsg(''), 3000);
   };
 
@@ -1714,12 +1714,24 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         Current Live Hero Background:
                       </div>
                       <div className="relative h-56 bg-zinc-900 border border-zinc-800 overflow-hidden">
-                        <img
-                          src={heroImage}
-                          alt="Hero background"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover"
-                        />
+                        {heroImage ? (
+                          <img
+                            src={heroImage}
+                            alt="Hero background"
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-contain bg-zinc-950"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-4 bg-zinc-950">
+                            <Camera className="w-6 h-6 text-zinc-700" />
+                            <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                              No hero photo set
+                            </div>
+                            <div className="text-[10px] text-zinc-600 leading-relaxed">
+                              The homepage headline is showing on the plain dark background
+                            </div>
+                          </div>
+                        )}
                         <div className="absolute bottom-2 left-2 bg-zinc-950/90 text-orange-500 text-[10px] font-black px-2 py-1 uppercase tracking-widest border border-zinc-800">
                           Live On Website
                         </div>
@@ -1804,7 +1816,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-orange-500 flex items-center gap-2 transition-colors cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Reset to shop default background</span>
+                        <span>Remove photo (plain dark background)</span>
                       </button>
                     </div>
                   </div>

@@ -4,8 +4,13 @@ import { Calendar, Compass, Wrench, ArrowRight, Award, MapPin, Phone } from 'luc
 import { Logo } from './Logo';
 
 export const HERO_IMAGE_KEY = 'theframeshop_hero_image';
-export const DEFAULT_HERO_IMAGE =
-  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=85&w=2000';
+
+/**
+ * No stock photo ships behind the headline — the hero stands on the dark ground,
+ * the accent glow and the type. Upload one from the Owner Photo Control tab and
+ * it takes over; resetting there returns the hero to this bare state.
+ */
+export const DEFAULT_HERO_IMAGE = '';
 
 interface HeroProps {
   onOpenBooking: () => void;
@@ -41,22 +46,26 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
     <section id="hero" className="relative min-h-[92vh] flex items-center pt-28 pb-16 bg-zinc-950 overflow-hidden font-sans">
       {/* Background Image with Dark Zinc Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        {/* A blown-up, blurred copy fills the wide frame so a squarer photo has
-            no bare edges. Purely decorative — the sharp copy carries the alt. */}
-        <img
-          src={heroImage}
-          alt=""
-          aria-hidden="true"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover object-center scale-110 blur-2xl opacity-45"
-        />
-        {/* The photo itself, whole and unzoomed, centred in the frame. */}
-        <img
-          src={heroImage}
-          alt="Custom Harley Davidson motorcycle"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-contain object-center opacity-95 filter contrast-110 saturate-110 brightness-105 transition-all duration-700"
-        />
+        {heroImage && (
+          <>
+            {/* A blown-up, blurred copy fills the wide frame so a squarer photo
+                has no bare edges. Decorative — the sharp copy carries the alt. */}
+            <img
+              src={heroImage}
+              alt=""
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-cover object-center scale-110 blur-2xl opacity-45"
+            />
+            {/* The photo itself, whole and unzoomed, centred in the frame. */}
+            <img
+              src={heroImage}
+              alt="Custom Harley Davidson motorcycle"
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-contain object-center opacity-95 filter contrast-110 saturate-110 brightness-105 transition-all duration-700"
+            />
+          </>
+        )}
         {/* Multi-directional gradient overlay tuned for high motorcycle visibility & text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/45 to-zinc-950/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/85 via-zinc-950/40 to-transparent" />
