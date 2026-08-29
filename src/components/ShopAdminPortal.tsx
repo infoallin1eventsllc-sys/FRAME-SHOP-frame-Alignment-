@@ -469,9 +469,11 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       const shot = await processImage(file, HERO_PRESET);
       saveHeroImage(
         shot.dataUrl,
-        `Hero updated — auto-cropped to ${shot.width}×${shot.height}, sharpened, ${formatBytes(
-          shot.originalBytes
-        )} → ${formatBytes(shot.bytes)}`
+        `Hero updated — ${
+          shot.fittedWhole
+            ? `kept whole at ${shot.width}×${shot.height} (too tall to crop to a banner)`
+            : `auto-cropped to ${shot.width}×${shot.height}`
+        }, sharpened, ${formatBytes(shot.originalBytes)} → ${formatBytes(shot.bytes)}`
       );
     } catch (err) {
       console.error(err);
@@ -1752,8 +1754,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                             </div>
                             <div className="text-[10px] text-zinc-500 mt-0.5">
                               {heroBusy
-                                ? "Cropping, sharpening and compressing for the web"
-                                : "Auto-cropped to 16:9 and sharpened — JPG, PNG, WEBP"}
+                                ? "Fitting, sharpening and compressing for the web"
+                                : "Auto-fitted, sharpened and compressed — JPG, PNG, WEBP"}
                             </div>
                           </div>
                           <input

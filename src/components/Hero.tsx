@@ -41,11 +41,21 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
     <section id="hero" className="relative min-h-[92vh] flex items-center pt-28 pb-16 bg-zinc-950 overflow-hidden font-sans">
       {/* Background Image with Dark Zinc Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
+        {/* A blown-up, blurred copy fills the wide frame so a squarer photo has
+            no bare edges. Purely decorative — the sharp copy carries the alt. */}
+        <img
+          src={heroImage}
+          alt=""
+          aria-hidden="true"
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 w-full h-full object-cover object-center scale-110 blur-2xl opacity-45"
+        />
+        {/* The photo itself, whole and unzoomed, sitting right of the headline. */}
         <img
           src={heroImage}
           alt="Custom Harley Davidson motorcycle"
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover object-center opacity-90 filter contrast-110 saturate-110 brightness-105 scale-105 transition-all duration-700"
+          className="absolute inset-0 w-full h-full object-contain object-center lg:object-right opacity-95 filter contrast-110 saturate-110 brightness-105 transition-all duration-700"
         />
         {/* Multi-directional gradient overlay tuned for high motorcycle visibility & text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/45 to-zinc-950/20" />

@@ -25,6 +25,16 @@ export interface ProcessOptions {
   sharpenRadius?: number;
   /** Cap on the encoded data-URL length, in characters. */
   maxChars?: number;
+  /**
+   * How far the source aspect may differ from the slot's before cropping is
+   * abandoned. Expressed as a ratio: 1.25 means "crop while the source is
+   * within 25% of the slot's shape, otherwise keep the whole frame".
+   *
+   * Cover-cropping a nearly square photo into a wide banner throws away most of
+   * the subject, so past this threshold the image is fitted whole instead and
+   * the slot is filled behind it. Omit to always crop.
+   */
+  maxCropRatio?: number;
 }
 
 export interface ProcessResult {
@@ -35,6 +45,8 @@ export interface ProcessResult {
   bytes: number;
   originalBytes: number;
   quality: number;
+  /** True when the shot was fitted whole rather than cropped into the slot. */
+  fittedWhole: boolean;
 }
 
 /**
@@ -44,7 +56,12 @@ export interface ProcessResult {
  */
 const DEFAULT_MAX_CHARS = 1_600_000;
 
-/** Wide landing-page banner. Cropped 16:9 — it sits behind the headline. */
+/**
+ * Wide landing-page banner. Prefers a 16:9 crop, but a bike shot is usually
+ * squarer than that and cropping one to a wide banner cuts the wheels off, so
+ * anything past a quarter off the slot's shape is kept whole and the hero fills
+ * the rest of the frame behind it.
+ */
 export const HERO_PRESET: ProcessOptions = {
   targetWidth: 2000,
   targetHeight: 1125,
@@ -54,6 +71,7 @@ export const HERO_PRESET: ProcessOptions = {
   brightness: 1.02,
   sharpenAmount: 0.55,
   sharpenRadius: 2,
+  maxCropRatio: 1.25,
 };
 
 /** Portrait card for the "About Paul" section. */
@@ -218,32 +236,56 @@ export async function processImage(
     sharpenAmount = 0,
     sharpenRadius = 2,
     maxChars = DEFAULT_MAX_CHARS,
+    maxCropRatio,
   } = opts;
 
   const source = await loadSource(file);
   const { w: srcW, h: srcH } = sourceSize(source);
   if (!srcW || !srcH) throw new Error('That image appears to be empty or corrupt.');
 
-  // Centre-crop the source to the slot's aspect ratio ("cover", done up front so
-  // no pixels are wasted carrying detail that would be cropped away later).
   const targetAspect = targetWidth / targetHeight;
   const srcAspect = srcW / srcH;
+
+  // How different are the two shapes? 1 means identical; 1.9 means the slot is
+  // nearly twice as wide, relatively, as the photo.
+  const aspectDelta = Math.max(srcAspect / targetAspect, targetAspect / srcAspect);
+  const fittedWhole = maxCropRatio != null && aspectDelta > maxCropRatio;
+
   let cropW: number;
   let cropH: number;
-  if (srcAspect > targetAspect) {
-    cropH = srcH;
-    cropW = srcH * targetAspect;
-  } else {
-    cropW = srcW;
-    cropH = srcW / targetAspect;
-  }
-  const cropX = (srcW - cropW) / 2;
-  const cropY = (srcH - cropH) / 2;
+  let cropX: number;
+  let cropY: number;
+  let outW: number;
+  let outH: number;
 
-  // Never upscale — a small source stays its own size, just correctly shaped.
-  const scale = Math.min(1, targetWidth / cropW);
-  const outW = Math.max(1, Math.round(cropW * scale));
-  const outH = Math.max(1, Math.round(cropH * scale));
+  if (fittedWhole) {
+    // The shapes are too far apart to crop between without gutting the subject.
+    // Keep every pixel and just bound the size; the slot fills in behind it.
+    cropW = srcW;
+    cropH = srcH;
+    cropX = 0;
+    cropY = 0;
+    const scale = Math.min(1, targetWidth / srcW, targetHeight / srcH);
+    outW = Math.max(1, Math.round(srcW * scale));
+    outH = Math.max(1, Math.round(srcH * scale));
+  } else {
+    // Close enough to crop: centre-cover to the slot's aspect, done up front so
+    // no pixels are carried through the scale that would be cropped away later.
+    if (srcAspect > targetAspect) {
+      cropH = srcH;
+      cropW = srcH * targetAspect;
+    } else {
+      cropW = srcW;
+      cropH = srcW / targetAspect;
+    }
+    cropX = (srcW - cropW) / 2;
+    cropY = (srcH - cropH) / 2;
+
+    // Never upscale — a small source stays its own size, just correctly shaped.
+    const scale = Math.min(1, targetWidth / cropW);
+    outW = Math.max(1, Math.round(cropW * scale));
+    outH = Math.max(1, Math.round(cropH * scale));
+  }
 
   // Step the size down by halves. One big drawImage to the final size aliases
   // badly on large photos; halving repeatedly keeps the detail intact.
@@ -290,6 +332,7 @@ export async function processImage(
     bytes: Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75),
     originalBytes: file.size,
     quality: q,
+    fittedWhole,
   };
 }
 
