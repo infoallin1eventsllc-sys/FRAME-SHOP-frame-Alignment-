@@ -570,10 +570,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [videos, setVideos] = useState<ShopVideo[]>([]);
   const [videoUrlInput, setVideoUrlInput] = useState<string>('');
   const [videoTitleInput, setVideoTitleInput] = useState<string>('');
-  const [videoDescInput, setVideoDescInput] = useState<string>('');
   const [videoMsg, setVideoMsg] = useState<string>('');
   const [videoUploading, setVideoUploading] = useState<boolean>(false);
   const [videoUploadPct, setVideoUploadPct] = useState<number>(0);
+  const [videoDragActive, setVideoDragActive] = useState<boolean>(false);
+  const [videoLinkOpen, setVideoLinkOpen] = useState<boolean>(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>('');
   const [videoConfig, setVideoConfig] = useState<{ enabled: boolean; maxBytes: number } | null>(null);
 
   // Ask the server whether it can host files, so the upload control only shows
@@ -654,14 +657,12 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
           id: `vid-${Date.now()}`,
           url,
           title,
-          description: videoDescInput.trim() || undefined,
         },
       ],
       `"${title}" added to the website.`
     );
     setVideoUrlInput('');
     setVideoTitleInput('');
-    setVideoDescInput('');
   };
 
   const handleRemoveVideo = async (id: string) => {
@@ -724,12 +725,17 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       xhr.send(file);
     });
 
-  const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
+  /**
+   * The whole of adding a video: hand it a file and it ends up on the website.
+   * No form to fill in first — the name comes from the file and can be corrected
+   * afterwards by clicking it in the list.
+   */
+  const publishVideoFile = async (file: File) => {
+    if (!file.type.startsWith("video/")) {
+      alert("That is not a video file. Drop a video from your camera roll or computer.");
+      return;
+    }
 
-    // Paul shouldn't have to name the file and then name it again.
     const title = videoTitleInput.trim() || titleFromFilename(file.name);
 
     // Catch the problems before the upload, not after minutes of waiting.
@@ -751,14 +757,12 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
             id: `vid-${Date.now()}`,
             url,
             title,
-            description: videoDescInput.trim() || undefined,
-            storageObject: objectName,
+              storageObject: objectName,
           },
         ],
         `"${title}" uploaded (${formatBytes(file.size)}) and published.`
       );
       setVideoTitleInput("");
-      setVideoDescInput("");
     } catch (err) {
       alert(err instanceof Error ? err.message : "The upload failed.");
     } finally {
@@ -2380,116 +2384,114 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   </div>
 
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Pick a video from your computer, or paste a YouTube link. It goes live on
-                    the website as soon as it finishes, and every customer sees it. If a video
-                    won't work on some phones, you'll be told before it uploads and shown how
-                    to fix it.
+                    Drop a video below and it goes straight onto your website. There is nothing
+                    else to fill in.
                   </p>
 
-                  {/* Shared title + description, used by both paths below */}
-                  <form onSubmit={handleAddVideo} className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
-                        <LinkIcon className="w-3.5 h-3.5 text-orange-500" />
-                        <span>Video Link</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="https://youtu.be/..."
-                        value={videoUrlInput}
-                        onChange={(e) => setVideoUrlInput(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
-                      />
-                      {videoUrlInput.trim() && (
+                  {/* One action. Drag a video in, or tap to pick one. */}
+                  {videoUploading ? (
+                    <div className="border-2 border-orange-600/60 bg-orange-950/20 p-8 space-y-3">
+                      <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-orange-400">
+                        <span>Putting your video on the website…</span>
+                        <span className="tabular-nums">{videoUploadPct}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-zinc-800 overflow-hidden">
                         <div
-                          className={`text-[10px] font-bold uppercase tracking-wider ${
-                            isPlayable(videoUrlInput) ? "text-emerald-400" : "text-red-400"
-                          }`}
-                        >
-                          {describeVideoUrl(videoUrlInput)}
-                        </div>
-                      )}
+                          className="h-full bg-orange-600 transition-all duration-200"
+                          style={{ width: `${videoUploadPct}%` }}
+                        />
+                      </div>
+                      <div className="text-[11px] text-zinc-400">
+                        Keep this window open until it reaches 100%.
+                      </div>
                     </div>
+                  ) : (
+                    <label
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setVideoDragActive(true);
+                      }}
+                      onDragLeave={() => setVideoDragActive(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setVideoDragActive(false);
+                        const dropped = e.dataTransfer.files?.[0];
+                        if (dropped) publishVideoFile(dropped);
+                      }}
+                      className={`border-2 border-dashed p-10 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-colors ${
+                        videoDragActive
+                          ? "border-orange-500 bg-orange-950/30"
+                          : "border-zinc-700 hover:border-orange-600 bg-zinc-900/60"
+                      }`}
+                    >
+                      <VideoIcon
+                        className={`w-10 h-10 ${videoDragActive ? "text-orange-500" : "text-zinc-600"}`}
+                      />
+                      <div className="text-sm font-black uppercase italic text-zinc-100">
+                        Drop a video here
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        or click to choose one from your computer
+                      </div>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => {
+                          const chosen = e.target.files?.[0];
+                          e.target.value = "";
+                          if (chosen) publishVideoFile(chosen);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider">
-                          Title <span className="text-zinc-500 font-normal">(optional for uploads)</span>
-                        </label>
+                  {/* Secondary path, folded away so it isn't a decision up front. */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setVideoLinkOpen((open) => !open)}
+                      className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-orange-400 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      {videoLinkOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      <span>Already on YouTube? Add it by link instead</span>
+                    </button>
+
+                    {videoLinkOpen && (
+                      <form onSubmit={handleAddVideo} className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-3">
                         <input
                           type="text"
-                          placeholder="Road Glide frame straightening"
+                          placeholder="Paste the YouTube link"
+                          value={videoUrlInput}
+                          onChange={(e) => setVideoUrlInput(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
+                        />
+                        {videoUrlInput.trim() && (
+                          <div
+                            className={`text-[10px] font-bold uppercase tracking-wider ${
+                              isPlayable(videoUrlInput) ? "text-emerald-400" : "text-red-400"
+                            }`}
+                          >
+                            {describeVideoUrl(videoUrlInput)}
+                          </div>
+                        )}
+                        <input
+                          type="text"
+                          placeholder="Give it a name, e.g. Road Glide frame straightening"
                           value={videoTitleInput}
                           onChange={(e) => setVideoTitleInput(e.target.value)}
                           className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 outline-none"
                         />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider">
-                          Short Description <span className="text-zinc-500 font-normal">(optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Laser measurement before and after"
-                          value={videoDescInput}
-                          onChange={(e) => setVideoDescInput(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 px-3 py-2.5 text-xs text-zinc-100 outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={videoUploading}
-                      className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-6 py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Video By Link</span>
-                    </button>
-
-                    {/* Upload path — only offered when the server can host files */}
-                    {videoConfig?.enabled && (
-                      <div className="pt-3 border-t border-zinc-800 space-y-2">
-                        <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
-                          <Upload className="w-3.5 h-3.5 text-orange-500" />
-                          <span>Or upload the video file itself</span>
-                        </label>
-
-                        {videoUploading ? (
-                          <div className="border border-orange-600/60 bg-orange-950/20 p-4 space-y-2">
-                            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-orange-400">
-                              <span>Uploading… do not close this window</span>
-                              <span className="tabular-nums">{videoUploadPct}%</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-zinc-800 overflow-hidden">
-                              <div
-                                className="h-full bg-orange-600 transition-all duration-200"
-                                style={{ width: `${videoUploadPct}%` }}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <label className="border-2 border-dashed border-zinc-800 hover:border-orange-600 bg-zinc-950 p-4 flex items-center justify-center gap-3 cursor-pointer transition-colors text-center group">
-                            <VideoIcon className="w-5 h-5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
-                            <div>
-                              <div className="text-xs font-bold text-zinc-200 group-hover:text-white uppercase tracking-wider">
-                                Click to select a video from your device
-                              </div>
-                              <div className="text-[10px] text-zinc-500 mt-0.5">
-                                MP4, MOV or WEBM up to {formatBytes(videoConfig.maxBytes)} — published as soon as it finishes
-                              </div>
-                            </div>
-                            <input
-                              type="file"
-                              accept="video/*"
-                              onChange={handleVideoFileUpload}
-                              className="hidden"
-                            />
-                          </label>
-                        )}
-                      </div>
+                        <button
+                          type="submit"
+                          className="bg-orange-600 hover:bg-orange-500 text-white font-black px-6 py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Put It On The Website</span>
+                        </button>
+                      </form>
                     )}
-                  </form>
+                  </div>
 
                   {/* Current list */}
                   {videos.length === 0 ? (
@@ -2531,9 +2533,40 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                             </div>
 
                             <div className="flex-1 min-w-0 space-y-0.5">
-                              <div className="text-xs font-black uppercase italic text-zinc-100 truncate">
-                                {vid.title}
-                              </div>
+                              {renamingId === vid.id ? (
+                                <input
+                                  autoFocus
+                                  value={renameValue}
+                                  onChange={(e) => setRenameValue(e.target.value)}
+                                  onBlur={() => {
+                                    const name = renameValue.trim();
+                                    if (name && name !== vid.title) {
+                                      persistVideos(
+                                        videos.map(v => (v.id === vid.id ? { ...v, title: name } : v)),
+                                        'Name updated.'
+                                      );
+                                    }
+                                    setRenamingId(null);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                    if (e.key === 'Escape') setRenamingId(null);
+                                  }}
+                                  className="w-full bg-zinc-950 border border-orange-600 px-2 py-1 text-xs text-zinc-100 outline-none"
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRenamingId(vid.id);
+                                    setRenameValue(vid.title);
+                                  }}
+                                  title="Click to rename"
+                                  className="text-xs font-black uppercase italic text-zinc-100 truncate hover:text-orange-400 transition-colors cursor-pointer text-left w-full"
+                                >
+                                  {vid.title}
+                                </button>
+                              )}
                               {vid.description && (
                                 <div className="text-[10px] text-zinc-400 truncate">{vid.description}</div>
                               )}
