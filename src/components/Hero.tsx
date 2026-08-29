@@ -60,7 +60,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end">
           
           {/* Left Hero Copy */}
           <div className="lg:col-span-8 space-y-8">
@@ -157,53 +157,33 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
 
           </div>
 
-          {/* Right Specialties / Feature Column */}
+          {/* Right Specialties — kept low and translucent so the bike stays visible */}
           <div className="lg:col-span-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-none p-8 shadow-2xl space-y-6">
-              <div className="text-xs font-bold uppercase tracking-[0.3em] text-orange-600 border-b border-zinc-800 pb-4 flex items-center justify-between">
+            <div className="bg-zinc-900/75 backdrop-blur-sm border border-zinc-800 rounded-none p-5 shadow-2xl space-y-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-600 border-b border-zinc-800 pb-2.5 flex items-center justify-between">
                 <span>Our Specialties</span>
-                <ShieldCheck className="w-4 h-4 text-orange-600" />
+                <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
               </div>
 
-              <ul className="space-y-6">
-                <li className="group cursor-default">
-                  <div className="text-lg font-black uppercase italic text-zinc-100 group-hover:text-orange-500 transition-colors">
-                    3D Powertrain Alignment
-                  </div>
-                  <div className="h-px w-full bg-zinc-800 mt-2 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 h-full w-4/5 bg-orange-600" />
-                  </div>
+              <ul className="space-y-1.5">
+                <li className="text-sm font-black uppercase italic text-zinc-100 hover:text-orange-500 transition-colors cursor-default leading-snug">
+                  3D Powertrain Alignment
                 </li>
-                <li className="group cursor-default">
-                  <div className="text-lg font-black uppercase italic text-zinc-100 group-hover:text-orange-500 transition-colors">
-                    Frame &amp; Neck Straightening
-                  </div>
-                  <div className="h-px w-full bg-zinc-800 mt-2 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 h-full w-full bg-orange-600" />
-                  </div>
+                <li className="text-sm font-black uppercase italic text-zinc-100 hover:text-orange-500 transition-colors cursor-default leading-snug">
+                  Frame &amp; Neck Straightening
                 </li>
-                <li className="group cursor-default">
-                  <div className="text-lg font-black uppercase italic text-zinc-100 group-hover:text-orange-500 transition-colors">
-                    Swingarm &amp; Fork Geometry
-                  </div>
-                  <div className="h-px w-full bg-zinc-800 mt-2 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 h-full w-2/3 bg-orange-600" />
-                  </div>
+                <li className="text-sm font-black uppercase italic text-zinc-100 hover:text-orange-500 transition-colors cursor-default leading-snug">
+                  Swingarm &amp; Fork Geometry
                 </li>
               </ul>
 
-              <div className="bg-zinc-950 p-4 border border-zinc-800 space-y-2 mt-4">
-                <div className="text-[10px] font-black uppercase tracking-widest text-orange-500">
-                  Paul's Shop Standard
-                </div>
-                <p className="text-xs text-zinc-300 italic font-normal">
-                  "If I won't ride it at 90mph, it doesn't leave my shop."
-                </p>
-              </div>
+              <p className="text-[11px] text-zinc-400 italic font-normal border-l-2 border-orange-600 pl-2.5 leading-relaxed">
+                "If I won't ride it at 90mph, it doesn't leave my shop."
+              </p>
 
               <button
                 onClick={() => onNavigate('services')}
-                className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-extrabold py-3 text-xs uppercase tracking-widest transition-colors cursor-pointer rounded-none border border-zinc-700"
+                className="w-full bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 font-extrabold py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer rounded-none border border-zinc-700"
               >
                 Explore All Services
               </button>
