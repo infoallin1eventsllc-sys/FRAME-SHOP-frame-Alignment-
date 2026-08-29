@@ -44,6 +44,7 @@ import {
   Video as VideoIcon,
   ChevronUp,
   ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { SHOP_INFO, WORK_PROJECTS } from "../data/shopData";
 import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types";
@@ -53,6 +54,7 @@ import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
 import { fetchVideos, ShopVideo } from "./ShopVideos";
 import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed";
 import { inspectVideoFile, titleFromFilename } from "../utils/videoFile";
+import { OWNER_GUIDE } from "../data/ownerGuide";
 import {
   processImage,
   formatBytes,
@@ -422,7 +424,57 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [pinError, setPinError] = useState<string>("");
 
   // Navigation Tab State
-  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "transactions" | "pricematrix" | "media">("bookings");
+  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "transactions" | "pricematrix" | "media" | "help">("bookings");
+
+  /**
+   * Opens the guide as its own plain page so Paul can print it or save it as a
+   * PDF for his phone. Printing the portal itself would drag the whole dashboard
+   * along with it.
+   */
+  const printOwnerGuide = () => {
+    const html = OWNER_GUIDE.map(section => `
+      <section>
+        <h2>${section.heading}</h2>
+        ${section.blurb ? `<p class="blurb">${section.blurb}</p>` : ""}
+        ${section.items.map(item => `
+          <div class="task">
+            <h3>${item.task}</h3>
+            <ol>${item.steps.map(s => `<li>${s}</li>`).join("")}</ol>
+            ${item.note ? `<p class="note">${item.note}</p>` : ""}
+          </div>`).join("")}
+      </section>`).join("");
+
+    const win = window.open("", "_blank", "width=900,height=1000");
+    if (!win) {
+      alert("Your browser blocked the print window. Allow pop-ups for this site and try again.");
+      return;
+    }
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8">
+      <title>The Frame Shop — Running Your Website</title>
+      <style>
+        body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+             color:#18181b;max-width:44rem;margin:2.5rem auto;padding:0 1.5rem}
+        h1{font-size:1.9rem;margin:0 0 .25rem;font-style:italic;text-transform:uppercase;letter-spacing:-.02em}
+        .sub{color:#71717a;margin:0 0 2rem;font-size:.9rem}
+        h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.18em;color:#ea580c;
+           border-bottom:1px solid #e4e4e7;padding-bottom:.4rem;margin:2.2rem 0 .8rem}
+        .blurb{color:#52525b;font-size:.88rem;margin:0 0 1rem}
+        .task{margin:0 0 1.3rem;break-inside:avoid}
+        h3{font-size:1rem;margin:0 0 .35rem}
+        ol{margin:.2rem 0;padding-left:1.3rem}
+        li{margin:.2rem 0}
+        .note{background:#fafafa;border-left:3px solid #ea580c;padding:.5rem .75rem;
+              margin:.5rem 0 0;font-size:.85rem;color:#3f3f46}
+        @media print{body{margin:0;max-width:none}}
+      </style></head><body>
+      <h1>Running Your Website</h1>
+      <p class="sub">The Frame Shop &middot; Spring, Texas &middot; prepared by Meridian Interface</p>
+      ${html}
+      </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  };
 
   // Media Control State (Owner Only)
   const DEFAULT_PAUL_IMG = 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=1200&auto=format&fit=crop';
@@ -1275,6 +1327,20 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                 >
                   <Camera className="w-3.5 h-3.5" />
                   <span>📸 Owner Photo Control</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveMainTab("help")}
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeMainTab === "help"
+                      ? "bg-orange-600 text-white shadow"
+                      : "bg-zinc-950 text-zinc-300 hover:text-white border border-zinc-700"
+                  }`}
+                  title="How to run your website"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>How Do I…?</span>
                 </button>
               </div>
             )}
@@ -2515,6 +2581,70 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                     </div>
                   )}
                 </div>
+              </div>
+            ) : activeMainTab === "help" ? (
+              /* Plain-language owner's guide */
+              <div className="space-y-6 font-sans">
+                <div className="bg-zinc-950 border border-zinc-800 p-5 space-y-3">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4" />
+                        <span>Owner's Guide</span>
+                      </div>
+                      <h3 className="text-2xl font-black text-zinc-100 uppercase italic">
+                        RUNNING YOUR WEBSITE
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={printOwnerGuide}
+                      className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 font-black px-4 py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print / Save PDF</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    Everything you can change on your own, in the order you're likely to need it.
+                    Print it for the shop wall, or save it as a PDF and keep it on your phone.
+                  </p>
+                </div>
+
+                {OWNER_GUIDE.map((section) => (
+                  <div key={section.heading} className="bg-zinc-950 border border-zinc-800 p-5 space-y-4">
+                    <div className="border-b border-zinc-800 pb-2.5">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-500">
+                        {section.heading}
+                      </h4>
+                      {section.blurb && (
+                        <p className="text-[11px] text-zinc-500 mt-1">{section.blurb}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-5">
+                      {section.items.map((item) => (
+                        <div key={item.task} className="space-y-1.5">
+                          <div className="text-sm font-black uppercase italic text-zinc-100">
+                            {item.task}
+                          </div>
+                          <ol className="space-y-1 list-decimal list-inside">
+                            {item.steps.map((step, i) => (
+                              <li key={i} className="text-xs text-zinc-300 leading-relaxed">
+                                {step}
+                              </li>
+                            ))}
+                          </ol>
+                          {item.note && (
+                            <p className="text-[11px] text-zinc-400 italic border-l-2 border-orange-600 pl-2.5 leading-relaxed">
+                              {item.note}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : activeMainTab === "transactions" ? (
               /* Financial POS Transactions View */
