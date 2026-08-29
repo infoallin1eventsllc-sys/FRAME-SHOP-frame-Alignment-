@@ -736,6 +736,18 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       return;
     }
 
+    // Say so up front rather than after the wait, if this site has no storage set up.
+    if (videoConfig && !videoConfig.enabled) {
+      alert(
+        "This website isn't set up to hold video files yet.\n\n" +
+        "For now, put the video on YouTube, set it to Unlisted, and use " +
+        "\"Already on YouTube? Add it by link instead\" underneath.\n\n" +
+        "Ask Otis to switch on video storage if you'd rather upload files directly."
+      );
+      setVideoLinkOpen(true);
+      return;
+    }
+
     const title = videoTitleInput.trim() || titleFromFilename(file.name);
 
     // Catch the problems before the upload, not after minutes of waiting.
@@ -2431,7 +2443,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         Drop a video here
                       </div>
                       <div className="text-xs text-zinc-400">
-                        or click to choose one from your computer
+                        {videoConfig && !videoConfig.enabled
+                          ? "File storage isn't switched on — use the YouTube option below"
+                          : "or click to choose one from your computer"}
                       </div>
                       <input
                         type="file"
