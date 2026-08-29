@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SHOP_INFO } from '../data/shopData';
-import { Calendar, Compass, ShieldCheck, Wrench, ArrowRight, Award, MapPin, Phone } from 'lucide-react';
+import { Calendar, Compass, Wrench, ArrowRight, Award, MapPin, Phone } from 'lucide-react';
 import { Logo } from './Logo';
 
 export const HERO_IMAGE_KEY = 'theframeshop_hero_image';
@@ -167,31 +167,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
 
           </div>
 
-          {/* Right Specialties — kept low and translucent so the bike stays visible */}
-          <div className="lg:col-span-4">
-            <div className="bg-zinc-900/75 backdrop-blur-sm border border-zinc-800 rounded-none p-5 shadow-2xl space-y-3">
-              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-600 border-b border-zinc-800 pb-2.5 flex items-center justify-between">
-                <span>Our Specialties</span>
-                <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
-              </div>
-
-              <ul className="space-y-1.5">
-                <li className="text-sm font-black uppercase italic text-zinc-100 hover:text-orange-500 transition-colors cursor-default leading-snug">
-                  3D Powertrain Alignment
-                </li>
-                <li className="text-sm font-black uppercase italic text-zinc-100 hover:text-orange-500 transition-colors cursor-default leading-snug">
-                  Frame &amp; Neck Straightening
-                </li>
-                <li className="text-sm font-black uppercase italic text-zinc-100 hover:text-orange-500 transition-colors cursor-default leading-snug">
-                  Swingarm &amp; Fork Geometry
-                </li>
-              </ul>
-
-              <p className="text-[11px] text-zinc-400 italic font-normal border-l-2 border-orange-600 pl-2.5 leading-relaxed">
-                "If I won't ride it at 90mph, it doesn't leave my shop."
-              </p>
-            </div>
-          </div>
+          {/* Right column intentionally left clear so the bike reads uncovered. */}
 
         </div>
       </div>
