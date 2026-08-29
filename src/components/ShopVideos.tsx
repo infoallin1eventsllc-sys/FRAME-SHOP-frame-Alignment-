@@ -9,6 +9,12 @@ export interface ShopVideo {
   url: string;
   title: string;
   description?: string;
+  /**
+   * Set when the file lives in the shop's own storage rather than on YouTube or
+   * Vimeo. Removing such a video also deletes the file, so it stops counting
+   * against the storage quota.
+   */
+  storageObject?: string;
 }
 
 export function readStoredVideos(): ShopVideo[] {

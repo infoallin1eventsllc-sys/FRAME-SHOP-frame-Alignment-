@@ -48,7 +48,7 @@ import {
 import { SHOP_INFO, WORK_PROJECTS } from "../data/shopData";
 import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types";
 import { TransactionPOSModal } from "./TransactionPOSModal";
-import { safeFetch } from "../utils/api";
+import { safeFetch, getApiUrl } from "../utils/api";
 import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
 import { VIDEOS_KEY, readStoredVideos, ShopVideo } from "./ShopVideos";
 import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed";
@@ -519,6 +519,27 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [videoTitleInput, setVideoTitleInput] = useState<string>('');
   const [videoDescInput, setVideoDescInput] = useState<string>('');
   const [videoMsg, setVideoMsg] = useState<string>('');
+  const [videoUploading, setVideoUploading] = useState<boolean>(false);
+  const [videoUploadPct, setVideoUploadPct] = useState<number>(0);
+  const [videoConfig, setVideoConfig] = useState<{ enabled: boolean; maxBytes: number } | null>(null);
+
+  // Ask the server whether it can host files, so the upload control only shows
+  // when it would actually work.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    safeFetch('/api/videos/config')
+      .then(r => (r.ok ? r.json() : null))
+      .then(cfg => {
+        if (!cancelled && cfg) setVideoConfig(cfg);
+      })
+      .catch(() => {
+        /* hosting simply stays unavailable; the paste-a-link path still works */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   const persistVideos = (next: ShopVideo[], note: string) => {
     setVideos(next);
@@ -572,11 +593,106 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     setVideoDescInput('');
   };
 
-  const handleRemoveVideo = (id: string) => {
+  const handleRemoveVideo = async (id: string) => {
     const target = videos.find(v => v.id === id);
     if (!target) return;
-    if (!confirm(`Remove "${target.title}" from the website?`)) return;
+
+    const hosted = Boolean(target.storageObject);
+    const question = hosted
+      ? `Remove "${target.title}" from the website and permanently delete the video file?`
+      : `Remove "${target.title}" from the website?`;
+    if (!confirm(question)) return;
+
     persistVideos(videos.filter(v => v.id !== id), `"${target.title}" removed.`);
+
+    // Best effort: the list is already updated, so a storage hiccup shouldn't
+    // leave a video the owner thinks they deleted still on the page.
+    if (hosted) {
+      try {
+        await safeFetch(`/api/videos/object/${encodeURIComponent(target.storageObject!)}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        console.error("Could not delete the stored file", err);
+      }
+    }
+  };
+
+  /**
+   * XHR rather than fetch: a shop clip can be a couple of hundred megabytes over
+   * shop wifi, and fetch gives no upload progress to show against that.
+   */
+  const uploadVideoFile = (file: File): Promise<{ url: string; objectName: string }> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", getApiUrl("/api/videos/upload"));
+      xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+      xhr.setRequestHeader("x-video-filename", file.name.replace(/[^\w.\- ]+/g, ""));
+      try {
+        const token = sessionStorage.getItem("shop_admin_token");
+        if (token) xhr.setRequestHeader("x-shop-secret", token);
+      } catch {
+        /* sessionStorage unavailable — the server will reject if it needs auth */
+      }
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setVideoUploadPct(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        let payload: any = {};
+        try {
+          payload = JSON.parse(xhr.responseText || "{}");
+        } catch {
+          /* fall through to the status check below */
+        }
+        if (xhr.status >= 200 && xhr.status < 300 && payload.url) resolve(payload);
+        else reject(new Error(payload.error || `Upload failed (${xhr.status}).`));
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload."));
+      xhr.onabort = () => reject(new Error("Upload cancelled."));
+      xhr.send(file);
+    });
+
+  const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const title = videoTitleInput.trim() || file.name.replace(/\.[^.]+$/, "");
+    if (videoConfig && file.size > videoConfig.maxBytes) {
+      alert(
+        `That file is ${formatBytes(file.size)}, over the ${formatBytes(
+          videoConfig.maxBytes
+        )} limit. Export it at a smaller size, or post it to YouTube and paste the link instead.`
+      );
+      return;
+    }
+
+    setVideoUploadPct(0);
+    setVideoUploading(true);
+    try {
+      const { url, objectName } = await uploadVideoFile(file);
+      persistVideos(
+        [
+          ...videos,
+          {
+            id: `vid-${Date.now()}`,
+            url,
+            title,
+            description: videoDescInput.trim() || undefined,
+            storageObject: objectName,
+          },
+        ],
+        `"${title}" uploaded (${formatBytes(file.size)}) and published.`
+      );
+      setVideoTitleInput("");
+      setVideoDescInput("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "The upload failed.");
+    } finally {
+      setVideoUploading(false);
+      setVideoUploadPct(0);
+    }
   };
 
   const handleMoveVideo = (id: string, direction: -1 | 1) => {
@@ -2178,13 +2294,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   </div>
 
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Post your video to YouTube (it can be Unlisted so it only shows here),
-                    then paste the link below. Videos are added by link rather than uploaded —
-                    a phone clip is far too large to store in the browser, and YouTube streams
-                    it properly on every device at no cost.
+                    Give the video a title, then either upload the file straight from your
+                    phone or computer, or paste a YouTube / Vimeo link. Uploaded files are
+                    hosted on the shop's own storage — no YouTube branding and no suggested
+                    videos pulling customers away.
                   </p>
 
-                  {/* Add form */}
+                  {/* Shared title + description, used by both paths below */}
                   <form onSubmit={handleAddVideo} className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-3">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
@@ -2238,11 +2354,55 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
                     <button
                       type="submit"
-                      className="bg-orange-600 hover:bg-orange-500 text-white font-black px-6 py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2"
+                      disabled={videoUploading}
+                      className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-6 py-2.5 text-[11px] uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Add Video To Website</span>
+                      <span>Add Video By Link</span>
                     </button>
+
+                    {/* Upload path — only offered when the server can host files */}
+                    {videoConfig?.enabled && (
+                      <div className="pt-3 border-t border-zinc-800 space-y-2">
+                        <label className="text-[11px] font-black uppercase text-zinc-200 tracking-wider flex items-center gap-2">
+                          <Upload className="w-3.5 h-3.5 text-orange-500" />
+                          <span>Or upload the video file itself</span>
+                        </label>
+
+                        {videoUploading ? (
+                          <div className="border border-orange-600/60 bg-orange-950/20 p-4 space-y-2">
+                            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-orange-400">
+                              <span>Uploading… do not close this window</span>
+                              <span className="tabular-nums">{videoUploadPct}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-zinc-800 overflow-hidden">
+                              <div
+                                className="h-full bg-orange-600 transition-all duration-200"
+                                style={{ width: `${videoUploadPct}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="border-2 border-dashed border-zinc-800 hover:border-orange-600 bg-zinc-950 p-4 flex items-center justify-center gap-3 cursor-pointer transition-colors text-center group">
+                            <VideoIcon className="w-5 h-5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
+                            <div>
+                              <div className="text-xs font-bold text-zinc-200 group-hover:text-white uppercase tracking-wider">
+                                Click to select a video from your device
+                              </div>
+                              <div className="text-[10px] text-zinc-500 mt-0.5">
+                                MP4, MOV or WEBM up to {formatBytes(videoConfig.maxBytes)} — published as soon as it finishes
+                              </div>
+                            </div>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              onChange={handleVideoFileUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
                   </form>
 
                   {/* Current list */}

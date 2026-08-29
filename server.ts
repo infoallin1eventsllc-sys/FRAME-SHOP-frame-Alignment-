@@ -90,6 +90,130 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
   next();
 }
 
+/* ---------------------------------------------------------------------------
+ * Shop video hosting (Supabase Storage)
+ *
+ * Paul uploads clips through this server rather than straight from the browser:
+ * a browser-side upload would need a Supabase key shipped in the JS bundle, and
+ * anyone could then write files into the shop's storage. The service key stays
+ * here, and the existing owner auth guards the route.
+ * ------------------------------------------------------------------------- */
+const SUPABASE_URL          = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const SUPABASE_SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY  || "";
+const SUPABASE_VIDEO_BUCKET = process.env.SUPABASE_VIDEO_BUCKET || "shop-videos";
+const MAX_VIDEO_BYTES       = parseInt(process.env.MAX_VIDEO_MB || "200", 10) * 1024 * 1024;
+
+const videoUploadsEnabled = () => Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY);
+
+/** Strip anything that could escape the bucket path or upset a URL. */
+function safeObjectName(rawName: string): string {
+  const cleaned = (rawName || "clip.mp4")
+    .replace(/[^\w.\- ]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(-80);
+  const stem = cleaned.replace(/\.[^.]*$/, "") || "clip";
+  const ext = (cleaned.match(/\.([a-z0-9]{1,5})$/i)?.[1] || "mp4").toLowerCase();
+  return `${Date.now()}-${stem}.${ext}`;
+}
+
+// Lets the admin portal show the upload control only when hosting is configured.
+app.get("/api/videos/config", (_req, res) => {
+  res.json({
+    enabled: videoUploadsEnabled(),
+    maxBytes: MAX_VIDEO_BYTES,
+    bucket: SUPABASE_VIDEO_BUCKET,
+  });
+});
+
+app.post(
+  "/api/videos/upload",
+  requireAdmin,
+  express.raw({ type: () => true, limit: MAX_VIDEO_BYTES }),
+  async (req, res) => {
+    if (!videoUploadsEnabled()) {
+      return res.status(503).json({
+        error: "Video hosting is not configured on this server.",
+      });
+    }
+
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      return res.status(400).json({ error: "No video data received." });
+    }
+
+    const contentType = String(req.headers["content-type"] || "");
+    if (!contentType.startsWith("video/")) {
+      return res.status(415).json({
+        error: "That file is not a video. Upload an MP4, MOV or WEBM.",
+      });
+    }
+
+    const objectName = safeObjectName(String(req.headers["x-video-filename"] || ""));
+
+    try {
+      const uploadUrl =
+        `${SUPABASE_URL}/storage/v1/object/${SUPABASE_VIDEO_BUCKET}/${encodeURIComponent(objectName)}`;
+      const upstream = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "Content-Type": contentType,
+          "cache-control": "public, max-age=31536000",
+        },
+        body: new Uint8Array(body),
+      });
+
+      if (!upstream.ok) {
+        const detail = await upstream.text().catch(() => "");
+        console.error("[VIDEO UPLOAD FAILED]", upstream.status, detail);
+        // Surface the one cause the owner can actually fix themselves.
+        if (upstream.status === 404) {
+          return res.status(502).json({
+            error: `Storage bucket "${SUPABASE_VIDEO_BUCKET}" was not found. Create it in Supabase and mark it public.`,
+          });
+        }
+        return res.status(502).json({ error: "Storage rejected the upload. Try again." });
+      }
+
+      res.json({
+        url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_VIDEO_BUCKET}/${encodeURIComponent(objectName)}`,
+        objectName,
+        bytes: body.length,
+      });
+    } catch (err) {
+      console.error("[VIDEO UPLOAD ERROR]", err);
+      res.status(500).json({ error: "Could not reach storage. Try again." });
+    }
+  }
+);
+
+// Removing a video from the site should not leave the file eating the quota.
+app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
+  if (!videoUploadsEnabled()) {
+    return res.status(503).json({ error: "Video hosting is not configured." });
+  }
+  const objectName = String(req.params.objectName || "");
+  if (!objectName || objectName.includes("/") || objectName.includes("..")) {
+    return res.status(400).json({ error: "Invalid file name." });
+  }
+
+  try {
+    const upstream = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/${SUPABASE_VIDEO_BUCKET}/${encodeURIComponent(objectName)}`,
+      { method: "DELETE", headers: { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
+    );
+    // A file already gone is a success from the caller's point of view.
+    if (!upstream.ok && upstream.status !== 404) {
+      return res.status(502).json({ error: "Storage rejected the delete." });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[VIDEO DELETE ERROR]", err);
+    res.status(500).json({ error: "Could not reach storage." });
+  }
+});
+
 // In-memory + local JSON file persistence for appointment bookings & transactions
 const DATA_DIR = path.join(process.cwd(), "data");
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
