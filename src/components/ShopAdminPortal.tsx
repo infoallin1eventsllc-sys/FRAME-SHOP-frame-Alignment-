@@ -48,6 +48,13 @@ import { TransactionPOSModal } from "./TransactionPOSModal";
 import { safeFetch } from "../utils/api";
 import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
 import {
+  processImage,
+  formatBytes,
+  HERO_PRESET,
+  PORTRAIT_PRESET,
+  GALLERY_PRESET,
+} from "../utils/imageProcessor";
+import {
   connectBluetoothPrinter,
   sendPayloadToBluetoothPrinter,
   buildEscPosWorkOrderPayload,
@@ -422,6 +429,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   });
   const [paulUrlInput, setPaulUrlInput] = useState<string>('');
   const [paulMsg, setPaulMsg] = useState<string>('');
+  const [paulBusy, setPaulBusy] = useState<boolean>(false);
 
   const [heroImage, setHeroImage] = useState<string>(() => {
     try {
@@ -432,8 +440,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   });
   const [heroUrlInput, setHeroUrlInput] = useState<string>('');
   const [heroMsg, setHeroMsg] = useState<string>('');
+  const [heroBusy, setHeroBusy] = useState<boolean>(false);
 
-  const saveHeroImage = (newUrl: string) => {
+  const saveHeroImage = (newUrl: string, note?: string) => {
     setHeroImage(newUrl);
     try {
       localStorage.setItem(HERO_IMAGE_KEY, newUrl);
@@ -441,24 +450,34 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       window.dispatchEvent(new CustomEvent('hero_image_updated'));
     } catch (e) {
       console.error(e);
+      alert(
+        'This browser ran out of local storage room, so the hero image could not be saved. Try resetting an image you are no longer using, then upload again.'
+      );
+      return;
     }
-    setHeroMsg('Landing page hero background updated!');
-    setTimeout(() => setHeroMsg(''), 3000);
+    setHeroMsg(note || 'Landing page hero background updated!');
+    setTimeout(() => setHeroMsg(''), 6000);
   };
 
-  const handleHeroFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        alert('File size exceeds 8MB limit.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const result = evt.target?.result as string;
-        if (result) saveHeroImage(result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    e.target.value = '';
+
+    setHeroBusy(true);
+    try {
+      const shot = await processImage(file, HERO_PRESET);
+      saveHeroImage(
+        shot.dataUrl,
+        `Hero updated — auto-cropped to ${shot.width}×${shot.height}, sharpened, ${formatBytes(
+          shot.originalBytes
+        )} → ${formatBytes(shot.bytes)}`
+      );
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'That image could not be processed.');
+    } finally {
+      setHeroBusy(false);
     }
   };
 
@@ -485,8 +504,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   });
   const [galleryUrlInputs, setGalleryUrlInputs] = useState<Record<string, string>>({});
   const [galleryMsg, setGalleryMsg] = useState<string>('');
+  const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
 
-  const savePaulPhoto = (newUrl: string) => {
+  const savePaulPhoto = (newUrl: string, note?: string) => {
     setPaulPhoto(newUrl);
     try {
       localStorage.setItem('paul_custom_photo', newUrl);
@@ -494,24 +514,34 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       window.dispatchEvent(new CustomEvent('paul_photo_updated'));
     } catch (e) {
       console.error(e);
+      alert(
+        'This browser ran out of local storage room, so the photo could not be saved. Try resetting an image you are no longer using, then upload again.'
+      );
+      return;
     }
-    setPaulMsg("Paul's website biopic photo updated!");
-    setTimeout(() => setPaulMsg(''), 3000);
+    setPaulMsg(note || "Paul's website biopic photo updated!");
+    setTimeout(() => setPaulMsg(''), 6000);
   };
 
-  const handlePaulFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePaulFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        alert('File size exceeds 8MB limit.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const result = evt.target?.result as string;
-        if (result) savePaulPhoto(result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    e.target.value = '';
+
+    setPaulBusy(true);
+    try {
+      const shot = await processImage(file, PORTRAIT_PRESET);
+      savePaulPhoto(
+        shot.dataUrl,
+        `Photo updated — auto-cropped to ${shot.width}×${shot.height}, sharpened, ${formatBytes(
+          shot.originalBytes
+        )} → ${formatBytes(shot.bytes)}`
+      );
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'That image could not be processed.');
+    } finally {
+      setPaulBusy(false);
     }
   };
 
@@ -528,7 +558,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     setTimeout(() => setPaulMsg(''), 3000);
   };
 
-  const saveGalleryPhoto = (projId: string, newUrl: string) => {
+  const saveGalleryPhoto = (projId: string, newUrl: string, note?: string) => {
     const updated = { ...galleryPhotos, [projId]: newUrl };
     setGalleryPhotos(updated);
     try {
@@ -537,20 +567,38 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       window.dispatchEvent(new CustomEvent('gallery_photos_updated'));
     } catch (e) {
       console.error(e);
+      alert(
+        'This browser ran out of local storage room, so the gallery photo could not be saved. Try resetting a case study photo you are no longer using, then upload again.'
+      );
+      return;
     }
-    setGalleryMsg('Case Study gallery photo updated!');
-    setTimeout(() => setGalleryMsg(''), 3000);
+    setGalleryMsg(note || 'Case Study gallery photo updated!');
+    setTimeout(() => setGalleryMsg(''), 6000);
   };
 
-  const handleGalleryFileUpload = (projId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryFileUpload = async (
+    projId: string,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const result = evt.target?.result as string;
-        if (result) saveGalleryPhoto(projId, result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    e.target.value = '';
+
+    setGalleryBusyId(projId);
+    try {
+      const shot = await processImage(file, GALLERY_PRESET);
+      saveGalleryPhoto(
+        projId,
+        shot.dataUrl,
+        `Case study photo updated — auto-cropped to ${shot.width}×${shot.height}, sharpened, ${formatBytes(
+          shot.originalBytes
+        )} → ${formatBytes(shot.bytes)}`
+      );
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'That image could not be processed.');
+    } finally {
+      setGalleryBusyId(null);
     }
   };
 
@@ -1682,20 +1730,37 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                           <Upload className="w-3.5 h-3.5 text-orange-500" />
                           <span>Option A: Upload Hero Image from Device</span>
                         </label>
-                        <label className="border-2 border-dashed border-zinc-800 hover:border-orange-600 bg-zinc-900/60 p-4 flex items-center justify-center gap-3 cursor-pointer transition-colors text-center group">
-                          <Upload className="w-5 h-5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
+                        <label
+                          className={`border-2 border-dashed p-4 flex items-center justify-center gap-3 transition-colors text-center group ${
+                            heroBusy
+                              ? "border-orange-600 bg-orange-950/30 cursor-wait"
+                              : "border-zinc-800 hover:border-orange-600 bg-zinc-900/60 cursor-pointer"
+                          }`}
+                        >
+                          <Upload
+                            className={`w-5 h-5 transition-colors ${
+                              heroBusy
+                                ? "text-orange-500 animate-pulse"
+                                : "text-zinc-400 group-hover:text-orange-500"
+                            }`}
+                          />
                           <div>
                             <div className="text-xs font-bold text-zinc-200 group-hover:text-white uppercase tracking-wider">
-                              Click to select image file from computer / device
+                              {heroBusy
+                                ? "Optimizing image…"
+                                : "Click to select image file from computer / device"}
                             </div>
                             <div className="text-[10px] text-zinc-500 mt-0.5">
-                              Wide landscape shots work best &mdash; JPG, PNG, WEBP (Max 8MB)
+                              {heroBusy
+                                ? "Cropping, sharpening and compressing for the web"
+                                : "Auto-cropped to 16:9 and sharpened — JPG, PNG, WEBP"}
                             </div>
                           </div>
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleHeroFileUpload}
+                            disabled={heroBusy}
                             className="hidden"
                           />
                         </label>
@@ -1788,20 +1853,37 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                           <Upload className="w-3.5 h-3.5 text-orange-500" />
                           <span>Option A: Upload New Photo from Device</span>
                         </label>
-                        <label className="border-2 border-dashed border-zinc-800 hover:border-orange-600 bg-zinc-900/60 p-4 flex items-center justify-center gap-3 cursor-pointer transition-colors text-center group">
-                          <Upload className="w-5 h-5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
+                        <label
+                          className={`border-2 border-dashed p-4 flex items-center justify-center gap-3 transition-colors text-center group ${
+                            paulBusy
+                              ? "border-orange-600 bg-orange-950/30 cursor-wait"
+                              : "border-zinc-800 hover:border-orange-600 bg-zinc-900/60 cursor-pointer"
+                          }`}
+                        >
+                          <Upload
+                            className={`w-5 h-5 transition-colors ${
+                              paulBusy
+                                ? "text-orange-500 animate-pulse"
+                                : "text-zinc-400 group-hover:text-orange-500"
+                            }`}
+                          />
                           <div>
                             <div className="text-xs font-bold text-zinc-200 group-hover:text-white uppercase tracking-wider">
-                              Click to select image file from computer / device
+                              {paulBusy
+                                ? "Optimizing image…"
+                                : "Click to select image file from computer / device"}
                             </div>
                             <div className="text-[10px] text-zinc-500 mt-0.5">
-                              Supports JPG, PNG, WEBP (Max 8MB)
+                              {paulBusy
+                                ? "Cropping, sharpening and compressing for the web"
+                                : "Auto-cropped to portrait and sharpened — JPG, PNG, WEBP"}
                             </div>
                           </div>
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handlePaulFileUpload}
+                            disabled={paulBusy}
                             className="hidden"
                           />
                         </label>
@@ -1911,15 +1993,28 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
                             <div className="col-span-2 space-y-2">
                               {/* File Input */}
-                              <label className="border border-dashed border-zinc-700 hover:border-orange-500 bg-zinc-950 p-2 flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                                <Upload className="w-3.5 h-3.5 text-zinc-400" />
+                              <label
+                                className={`border border-dashed p-2 flex items-center justify-center gap-2 transition-colors ${
+                                  galleryBusyId === proj.id
+                                    ? "border-orange-500 bg-orange-950/30 cursor-wait"
+                                    : "border-zinc-700 hover:border-orange-500 bg-zinc-950 cursor-pointer"
+                                }`}
+                              >
+                                <Upload
+                                  className={`w-3.5 h-3.5 ${
+                                    galleryBusyId === proj.id
+                                      ? "text-orange-500 animate-pulse"
+                                      : "text-zinc-400"
+                                  }`}
+                                />
                                 <span className="text-[10px] font-bold text-zinc-200 uppercase tracking-wider">
-                                  Upload File
+                                  {galleryBusyId === proj.id ? "Optimizing…" : "Upload File"}
                                 </span>
                                 <input
                                   type="file"
                                   accept="image/*"
                                   onChange={(e) => handleGalleryFileUpload(proj.id, e)}
+                                  disabled={galleryBusyId === proj.id}
                                   className="hidden"
                                 />
                               </label>
