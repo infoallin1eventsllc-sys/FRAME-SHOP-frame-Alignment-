@@ -598,8 +598,38 @@ app.post("/api/auth/pin", (req, res) => {
   res.json({ token: SHOP_API_SECRET });
 });
 
-// GET /api/bookings - Fetch all appointments
-app.get("/api/bookings", (req, res) => {
+/**
+ * Public ticket lookup — one booking at a time.
+ *
+ * Track Ticket used to pull the entire bookings list into the browser and match
+ * on it there, which meant every visitor could read every customer's name,
+ * phone, email and notes. The match now happens here and only the one booking
+ * comes back. Rate limited, because ticket numbers are short and guessable.
+ */
+app.get("/api/bookings/lookup", bookingLimiter, (req, res) => {
+  const raw = String(req.query.q || "").trim();
+  if (raw.length < 6) {
+    return res.status(400).json({ error: "Enter your full ticket number or phone number." });
+  }
+
+  const ticket = raw.toUpperCase();
+  const digits = raw.replace(/\D/g, "");
+
+  const match = loadBookings().find(
+    (b) =>
+      b.ticketNumber.toUpperCase() === ticket ||
+      // Whole number only. A partial match would hand over someone else's ticket.
+      (digits.length >= 10 && b.phone.replace(/\D/g, "") === digits)
+  );
+
+  if (!match) {
+    return res.status(404).json({ error: "No ticket found." });
+  }
+  res.json({ booking: match });
+});
+
+// GET /api/bookings - the owner's full list. Customers use /lookup above.
+app.get("/api/bookings", requireAdmin, (req, res) => {
   const bookings = loadBookings();
   const { status } = req.query;
   if (status && typeof status === "string" && status !== "all") {
@@ -722,8 +752,9 @@ app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
 // Transaction / POS API Routes
 // -----------------------------------------------------------------------------
 
-// GET /api/transactions - Retrieve transaction history
-app.get("/api/transactions", (req, res) => {
+// GET /api/transactions - owner only. Every row carries a customer's name,
+// phone, email and what they were charged; nothing public needs to read it.
+app.get("/api/transactions", requireAdmin, (req, res) => {
   try {
     const transactions = loadTransactions();
     const { status, type } = req.query;
@@ -1050,6 +1081,22 @@ async function start() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[THE FRAME SHOP SERVER RUNNING]: http://localhost:${PORT}`);
+
+    // requireAdmin waves everything through when there is no secret to check,
+    // which is what makes local development painless — and what would quietly
+    // publish the customer list if it were ever missing in production.
+    if (!SHOP_API_SECRET) {
+      const where = process.env.NODE_ENV === "production" ? "PRODUCTION" : "development";
+      console.warn(
+        `\n[!] SHOP_API_SECRET is not set (${where}).\n` +
+        `    Owner-only routes are UNPROTECTED: bookings and transactions can be\n` +
+        `    read by anyone who can reach this server, customer details included.\n` +
+        (process.env.NODE_ENV === "production"
+          ? `    Set it now — generate one with:\n` +
+            `    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"\n`
+          : `    Fine for local work. Must be set before this is deployed.\n`)
+      );
+    }
   });
 }
 

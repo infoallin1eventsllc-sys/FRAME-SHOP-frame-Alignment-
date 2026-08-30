@@ -51,20 +51,23 @@ export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, 
     setFoundBooking(null);
 
     try {
-      const formattedInput = ticketInput.trim().toUpperCase();
-      const res = await safeFetch('/api/bookings');
+      // The server matches and returns only this customer's booking. It used to
+      // send every booking to the browser, which exposed the whole customer list.
+      const res = await safeFetch(
+        `/api/bookings/lookup?q=${encodeURIComponent(ticketInput.trim())}`
+      );
+
       if (res.ok) {
         const data = await res.json();
-        const bookings: BookingDetails[] = Array.isArray(data) ? data : (data.bookings || []);
-        const match = bookings.find(
-          b => b.ticketNumber.toUpperCase() === formattedInput || b.phone.includes(formattedInput)
-        );
-
-        if (match) {
-          setFoundBooking(match);
+        if (data.booking) {
+          setFoundBooking(data.booking as BookingDetails);
         } else {
           setErrorMsg(`No active ticket found for "${ticketInput}". Please check your confirmation ticket number or call Paul at ${SHOP_INFO.phone}.`);
         }
+      } else if (res.status === 404 || res.status === 400) {
+        setErrorMsg(`No active ticket found for "${ticketInput}". Please check your confirmation ticket number or call Paul at ${SHOP_INFO.phone}.`);
+      } else if (res.status === 429) {
+        setErrorMsg('Too many lookups just now. Wait a moment and try again, or call the shop.');
       } else {
         setErrorMsg('Unable to retrieve tickets right now. Please try again or call the shop.');
       }
