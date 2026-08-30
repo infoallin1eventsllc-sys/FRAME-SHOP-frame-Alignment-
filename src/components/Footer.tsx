@@ -151,13 +151,30 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
             This website was built by
           </span>
 
-          <MeridianLogo size={150} />
+          <a
+            href="https://meridianinterface.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Meridian Interface"
+            className="opacity-85 hover:opacity-100 transition-opacity"
+          >
+            <MeridianLogo size={150} />
+          </a>
 
           <p className="max-w-md text-[11px] text-zinc-500 font-normal normal-case tracking-normal leading-relaxed">
             Websites, applications, and always-on marketing systems for growing businesses.
           </p>
 
           <div className="flex items-center gap-3 flex-wrap justify-center text-[11px] font-bold">
+            <a
+              href="https://meridianinterface.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-300 hover:text-orange-500 transition-colors normal-case tracking-normal"
+            >
+              meridianinterface.com
+            </a>
+            <span className="text-zinc-700" aria-hidden="true">•</span>
             <a
               href="mailto:otis@meridianinterface.com"
               className="text-zinc-400 hover:text-orange-500 transition-colors normal-case tracking-normal"
