@@ -3,7 +3,7 @@ import { SHOP_INFO } from '../data/shopData';
 import { Calendar, Compass, Wrench, ArrowRight, Award, MapPin, Phone } from 'lucide-react';
 import { Logo } from './Logo';
 
-export const HERO_IMAGE_KEY = 'theframeshop_hero_image';
+import { fetchSiteMedia, onMediaUpdated } from '../utils/siteMedia';
 
 /**
  * No stock photo ships behind the headline — the hero stands on the dark ground,
@@ -18,27 +18,20 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
-  const [heroImage, setHeroImage] = useState<string>(() => {
-    try {
-      return localStorage.getItem(HERO_IMAGE_KEY) || DEFAULT_HERO_IMAGE;
-    } catch {
-      return DEFAULT_HERO_IMAGE;
-    }
-  });
+  const [heroImage, setHeroImage] = useState<string>(DEFAULT_HERO_IMAGE);
 
   useEffect(() => {
+    let cancelled = false;
     const sync = () => {
-      try {
-        setHeroImage(localStorage.getItem(HERO_IMAGE_KEY) || DEFAULT_HERO_IMAGE);
-      } catch {
-        setHeroImage(DEFAULT_HERO_IMAGE);
-      }
+      fetchSiteMedia().then(media => {
+        if (!cancelled) setHeroImage(media.heroImage || DEFAULT_HERO_IMAGE);
+      });
     };
-    window.addEventListener('storage', sync);
-    window.addEventListener('hero_image_updated', sync);
+    sync();
+    const off = onMediaUpdated(sync);
     return () => {
-      window.removeEventListener('storage', sync);
-      window.removeEventListener('hero_image_updated', sync);
+      cancelled = true;
+      off();
     };
   }, []);
 

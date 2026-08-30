@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import {
   Calendar,
@@ -50,11 +50,12 @@ import { SHOP_INFO, WORK_PROJECTS } from "../data/shopData";
 import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types";
 import { TransactionPOSModal } from "./TransactionPOSModal";
 import { safeFetch, getApiUrl } from "../utils/api";
-import { HERO_IMAGE_KEY, DEFAULT_HERO_IMAGE } from "./Hero";
+import { DEFAULT_HERO_IMAGE } from "./Hero";
 import { fetchVideos, ShopVideo } from "./ShopVideos";
 import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed";
 import { inspectVideoFile, titleFromFilename } from "../utils/videoFile";
 import { OWNER_GUIDE } from "../data/ownerGuide";
+import { fetchSiteMedia, saveSiteMedia, SiteMedia } from "../utils/siteMedia";
 import {
   processImage,
   formatBytes,
@@ -478,39 +479,26 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
   // Media Control State (Owner Only)
   const DEFAULT_PAUL_IMG = 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=1200&auto=format&fit=crop';
-  const [paulPhoto, setPaulPhoto] = useState<string>(() => {
-    try {
-      return localStorage.getItem('paul_custom_photo') || DEFAULT_PAUL_IMG;
-    } catch {
-      return DEFAULT_PAUL_IMG;
-    }
-  });
+  const [paulPhoto, setPaulPhoto] = useState<string>(DEFAULT_PAUL_IMG);
   const [paulUrlInput, setPaulUrlInput] = useState<string>('');
   const [paulMsg, setPaulMsg] = useState<string>('');
   const [paulBusy, setPaulBusy] = useState<boolean>(false);
 
-  const [heroImage, setHeroImage] = useState<string>(() => {
-    try {
-      return localStorage.getItem(HERO_IMAGE_KEY) || DEFAULT_HERO_IMAGE;
-    } catch {
-      return DEFAULT_HERO_IMAGE;
-    }
-  });
+  const [heroImage, setHeroImage] = useState<string>(DEFAULT_HERO_IMAGE);
   const [heroUrlInput, setHeroUrlInput] = useState<string>('');
   const [heroMsg, setHeroMsg] = useState<string>('');
   const [heroBusy, setHeroBusy] = useState<boolean>(false);
 
-  const saveHeroImage = (newUrl: string, note?: string) => {
+  const saveHeroImage = async (newUrl: string, note?: string) => {
+    const previous = heroImage;
     setHeroImage(newUrl);
     try {
-      localStorage.setItem(HERO_IMAGE_KEY, newUrl);
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('hero_image_updated'));
+      await saveSiteMedia({ ...mediaRef.current, heroImage: newUrl });
+      mediaRef.current = { ...mediaRef.current, heroImage: newUrl };
     } catch (e) {
       console.error(e);
-      alert(
-        'This browser ran out of local storage room, so the hero image could not be saved. Try resetting an image you are no longer using, then upload again.'
-      );
+      setHeroImage(previous);
+      alert(e instanceof Error ? e.message : 'The photo could not be saved to the website.');
       return;
     }
     setHeroMsg(note || 'Landing page hero background updated!');
@@ -541,12 +529,11 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     }
   };
 
-  const handleHeroReset = () => {
+  const handleHeroReset = async () => {
     setHeroImage(DEFAULT_HERO_IMAGE);
     try {
-      localStorage.removeItem(HERO_IMAGE_KEY);
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('hero_image_updated'));
+      await saveSiteMedia({ ...mediaRef.current, heroImage: '' });
+      mediaRef.current = { ...mediaRef.current, heroImage: '' };
     } catch (e) {
       console.error(e);
     }
@@ -554,14 +541,14 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     setTimeout(() => setHeroMsg(''), 3000);
   };
 
-  const [galleryPhotos, setGalleryPhotos] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem('theframeshop_gallery_photos');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [galleryPhotos, setGalleryPhotos] = useState<Record<string, string>>({});
+
+  /**
+   * The saved media as the server last confirmed it. Each save sends the whole
+   * object, so this keeps the other two photos from being wiped when one of
+   * them is changed.
+   */
+  const mediaRef = useRef<SiteMedia>({});
   const [galleryUrlInputs, setGalleryUrlInputs] = useState<Record<string, string>>({});
   const [galleryMsg, setGalleryMsg] = useState<string>('');
   const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
@@ -596,6 +583,16 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
     fetchVideos().then(list => {
       if (!cancelled) setVideos(list);
+    });
+
+    // Load the photos currently live on the site, so the previews match what
+    // customers see and a save doesn't wipe the ones we didn't touch.
+    fetchSiteMedia().then(media => {
+      if (cancelled) return;
+      mediaRef.current = media;
+      setHeroImage(media.heroImage || DEFAULT_HERO_IMAGE);
+      setPaulPhoto(media.paulPhoto || DEFAULT_PAUL_IMG);
+      setGalleryPhotos(media.galleryPhotos || {});
     });
 
     return () => {
@@ -792,17 +789,16 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     persistVideos(next, 'Video order updated.');
   };
 
-  const savePaulPhoto = (newUrl: string, note?: string) => {
+  const savePaulPhoto = async (newUrl: string, note?: string) => {
+    const previous = paulPhoto;
     setPaulPhoto(newUrl);
     try {
-      localStorage.setItem('paul_custom_photo', newUrl);
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('paul_photo_updated'));
+      await saveSiteMedia({ ...mediaRef.current, paulPhoto: newUrl });
+      mediaRef.current = { ...mediaRef.current, paulPhoto: newUrl };
     } catch (e) {
       console.error(e);
-      alert(
-        'This browser ran out of local storage room, so the photo could not be saved. Try resetting an image you are no longer using, then upload again.'
-      );
+      setPaulPhoto(previous);
+      alert(e instanceof Error ? e.message : 'The photo could not be saved to the website.');
       return;
     }
     setPaulMsg(note || "Paul's website biopic photo updated!");
@@ -831,12 +827,11 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     }
   };
 
-  const handlePaulReset = () => {
+  const handlePaulReset = async () => {
     setPaulPhoto(DEFAULT_PAUL_IMG);
     try {
-      localStorage.removeItem('paul_custom_photo');
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('paul_photo_updated'));
+      await saveSiteMedia({ ...mediaRef.current, paulPhoto: '' });
+      mediaRef.current = { ...mediaRef.current, paulPhoto: '' };
     } catch (e) {
       console.error(e);
     }
@@ -844,18 +839,17 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     setTimeout(() => setPaulMsg(''), 3000);
   };
 
-  const saveGalleryPhoto = (projId: string, newUrl: string, note?: string) => {
+  const saveGalleryPhoto = async (projId: string, newUrl: string, note?: string) => {
+    const previous = galleryPhotos;
     const updated = { ...galleryPhotos, [projId]: newUrl };
     setGalleryPhotos(updated);
     try {
-      localStorage.setItem('theframeshop_gallery_photos', JSON.stringify(updated));
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('gallery_photos_updated'));
+      await saveSiteMedia({ ...mediaRef.current, galleryPhotos: updated });
+      mediaRef.current = { ...mediaRef.current, galleryPhotos: updated };
     } catch (e) {
       console.error(e);
-      alert(
-        'This browser ran out of local storage room, so the gallery photo could not be saved. Try resetting a case study photo you are no longer using, then upload again.'
-      );
+      setGalleryPhotos(previous);
+      alert(e instanceof Error ? e.message : 'The photo could not be saved to the website.');
       return;
     }
     setGalleryMsg(note || 'Case Study gallery photo updated!');
@@ -888,14 +882,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     }
   };
 
-  const handleGalleryReset = (projId: string) => {
+  const handleGalleryReset = async (projId: string) => {
     const updated = { ...galleryPhotos };
     delete updated[projId];
     setGalleryPhotos(updated);
     try {
-      localStorage.setItem('theframeshop_gallery_photos', JSON.stringify(updated));
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('gallery_photos_updated'));
+      await saveSiteMedia({ ...mediaRef.current, galleryPhotos: updated });
+      mediaRef.current = { ...mediaRef.current, galleryPhotos: updated };
     } catch (e) {
       console.error(e);
     }

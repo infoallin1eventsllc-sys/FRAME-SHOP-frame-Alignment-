@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SHOP_INFO } from '../data/shopData';
 import { Wrench, ShieldCheck, MapPin, Award, ArrowRight, Target, Check } from 'lucide-react';
+import { fetchSiteMedia, onMediaUpdated } from '../utils/siteMedia';
 
 interface AboutPaulProps {
   onOpenBooking: () => void;
@@ -13,29 +14,22 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
   const [currentPhoto, setCurrentPhoto] = useState<string>(DEFAULT_PAUL_IMAGE);
   const [imgError, setImgError] = useState(false);
 
-  // Load saved custom photo from localStorage on mount & listen to changes
+  // Comes from the server, so every visitor sees the photo Paul chose.
   useEffect(() => {
+    let cancelled = false;
     const loadPhoto = () => {
-      try {
-        const saved = localStorage.getItem('paul_custom_photo');
-        if (saved) {
-          setCurrentPhoto(saved);
-        } else {
-          setCurrentPhoto(DEFAULT_PAUL_IMAGE);
-        }
-      } catch {
-        setCurrentPhoto(DEFAULT_PAUL_IMAGE);
-      }
+      fetchSiteMedia().then(media => {
+        if (cancelled) return;
+        setCurrentPhoto(media.paulPhoto || DEFAULT_PAUL_IMAGE);
+        setImgError(false);
+      });
     };
 
     loadPhoto();
-
-    window.addEventListener('storage', loadPhoto);
-    window.addEventListener('paul_photo_updated', loadPhoto);
-
+    const off = onMediaUpdated(loadPhoto);
     return () => {
-      window.removeEventListener('storage', loadPhoto);
-      window.removeEventListener('paul_photo_updated', loadPhoto);
+      cancelled = true;
+      off();
     };
   }, []);
 

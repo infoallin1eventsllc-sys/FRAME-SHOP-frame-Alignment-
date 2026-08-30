@@ -276,6 +276,71 @@ function sanitiseVideos(input: unknown): ShopVideoRecord[] | null {
   return out;
 }
 
+/* ---------------------------------------------------------------------------
+ * Site media — the hero photo, Paul's portrait, the case-study photos.
+ *
+ * These were held in the owner's browser, so a photo he changed was visible to
+ * him and to nobody else, on any other device or any customer's screen, while
+ * the portal reported it live. Same failure the video list had.
+ * ------------------------------------------------------------------------- */
+const MEDIA_FILE = path.join(DATA_DIR, "media.json");
+
+/** Data URLs of conditioned photos, so a few hundred KB each is normal. */
+const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
+
+interface SiteMedia {
+  heroImage?: string;
+  paulPhoto?: string;
+  galleryPhotos?: Record<string, string>;
+}
+
+function readMedia(): SiteMedia {
+  try {
+    if (!fs.existsSync(MEDIA_FILE)) return {};
+    const parsed = JSON.parse(fs.readFileSync(MEDIA_FILE, "utf-8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (err) {
+    console.error("[MEDIA READ ERROR]", err);
+    return {};
+  }
+}
+
+function writeMedia(media: SiteMedia) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(MEDIA_FILE, JSON.stringify(media));
+}
+
+app.get("/api/media", (_req, res) => {
+  res.json(readMedia());
+});
+
+// Owner only. Sent whole, the same way the portal holds it.
+app.put("/api/media", requireAdmin, express.json({ limit: MAX_MEDIA_BYTES }), (req, res) => {
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return res.status(400).json({ error: "Invalid media payload." });
+  }
+
+  const clean: SiteMedia = {};
+  if (typeof body.heroImage === "string") clean.heroImage = body.heroImage;
+  if (typeof body.paulPhoto === "string") clean.paulPhoto = body.paulPhoto;
+  if (body.galleryPhotos && typeof body.galleryPhotos === "object" && !Array.isArray(body.galleryPhotos)) {
+    const photos: Record<string, string> = {};
+    for (const [id, url] of Object.entries(body.galleryPhotos)) {
+      if (typeof id === "string" && typeof url === "string" && id.length <= 64) photos[id] = url;
+    }
+    clean.galleryPhotos = photos;
+  }
+
+  try {
+    writeMedia(clean);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[MEDIA WRITE ERROR]", err);
+    res.status(500).json({ error: "Could not save the site photos." });
+  }
+});
+
 // Public — every visitor needs this to render the section.
 app.get("/api/videos", (_req, res) => {
   res.json(readVideos());

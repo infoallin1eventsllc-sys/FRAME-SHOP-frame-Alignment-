@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WORK_PROJECTS } from '../data/shopData';
 import { WorkProject } from '../types';
 import { CheckCircle2, ArrowRight, Gauge, Info, X, Camera } from 'lucide-react';
+import { fetchSiteMedia, onMediaUpdated } from '../utils/siteMedia';
 
 interface OurWorkGalleryProps {
   onOpenBooking: () => void;
@@ -11,34 +12,22 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
   const [activeTab, setActiveCategory] = useState<'all' | 'frame' | 'powertrain' | 'suspension' | 'custom'>('all');
   const [selectedProject, setSelectedProject] = useState<WorkProject | null>(null);
 
-  // Custom persistent photo overrides for gallery projects
-  const [projectPhotos, setProjectPhotos] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem('theframeshop_gallery_photos');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  // Owner's photo overrides, from the server so customers see them too.
+  const [projectPhotos, setProjectPhotos] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    let cancelled = false;
     const loadGalleryPhotos = () => {
-      try {
-        const saved = localStorage.getItem('theframeshop_gallery_photos');
-        setProjectPhotos(saved ? JSON.parse(saved) : {});
-      } catch {
-        setProjectPhotos({});
-      }
+      fetchSiteMedia().then(media => {
+        if (!cancelled) setProjectPhotos(media.galleryPhotos || {});
+      });
     };
 
     loadGalleryPhotos();
-
-    window.addEventListener('storage', loadGalleryPhotos);
-    window.addEventListener('gallery_photos_updated', loadGalleryPhotos);
-
+    const off = onMediaUpdated(loadGalleryPhotos);
     return () => {
-      window.removeEventListener('storage', loadGalleryPhotos);
-      window.removeEventListener('gallery_photos_updated', loadGalleryPhotos);
+      cancelled = true;
+      off();
     };
   }, []);
 
