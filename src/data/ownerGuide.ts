@@ -137,23 +137,22 @@ export const OWNER_GUIDE: GuideSection[] = [
     ],
   },
   {
-    heading: 'Charging Customers',
-    blurb: 'Open "Customer POS & Transactions".',
+    heading: 'Getting Paid',
+    blurb: 'Money is handled in Shopify. The website raises the invoice and keeps track of who has paid.',
     items: [
       {
-        task: 'Take a payment',
+        task: 'Bill a customer for a finished job',
         steps: [
-          'Click "+ Process Customer Transaction".',
-          'Add each item of labour and parts.',
-          'Take the payment and the receipt is recorded.',
+          'Open Work Orders and find the job.',
+          'Click "Create Owner Invoice" and add the labour and parts lines.',
+          'Send it. The customer gets an email with a link to pay.',
         ],
+        note: 'When they pay, the job marks itself as paid here. You do not have to come back and tick anything off.',
       },
       {
-        task: 'Raise an invoice for a job',
-        steps: [
-          'Find the job in Work Orders and click "Create Owner Invoice".',
-          'Add the lines, then send or print it.',
-        ],
+        task: 'Take a payment at the counter',
+        steps: ['Use the Shopify app or card reader, the same as any other sale.'],
+        note: 'The website does not take cards itself — Shopify does, so all your takings stay in one place for the bookkeeper.',
       },
       {
         task: 'Get your numbers into a spreadsheet',

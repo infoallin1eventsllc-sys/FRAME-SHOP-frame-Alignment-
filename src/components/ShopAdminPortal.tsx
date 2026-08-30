@@ -47,8 +47,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { SHOP_INFO, WORK_PROJECTS } from "../data/shopData";
-import { Transaction, Booking, InternalInvoice, InvoiceLineItem } from "../types";
-import { TransactionPOSModal } from "./TransactionPOSModal";
+import { Booking, InternalInvoice, InvoiceLineItem } from "../types";
 import { safeFetch, getApiUrl } from "../utils/api";
 import { DEFAULT_HERO_IMAGE } from "./Hero";
 import { fetchVideos, ShopVideo } from "./ShopVideos";
@@ -326,49 +325,6 @@ export function exportAllInvoicesToExcel(bookings: Booking[]) {
   XLSX.writeFile(wb, `TheFrameShop_MasterInvoices_${new Date().toISOString().split("T")[0]}.xlsx`);
 }
 
-export function exportAllTransactionsToExcel(transactions: Transaction[]) {
-  const wb = XLSX.utils.book_new();
-
-  const summaryRows: any[][] = [
-    ["THE FRAME SHOP - MASTER FINANCIAL TRANSACTIONS LEDGER"],
-    ["Export Date:", new Date().toLocaleString()],
-    [""],
-    ["Txn ID", "Date/Time", "Type", "Customer Name", "Phone", "Motorcycle", "Payment Method", "Subtotal ($)", "Supplies ($)", "Tax ($)", "Total Amount ($)", "Status"]
-  ];
-
-  let grandTotal = 0;
-
-  transactions.forEach((t) => {
-    if (t.status === "completed") {
-      grandTotal += t.totalAmount;
-    }
-    summaryRows.push([
-      t.id,
-      new Date(t.timestamp).toLocaleString(),
-      t.type.replace(/_/g, " ").toUpperCase(),
-      t.customerName,
-      t.customerPhone,
-      t.motorcycle,
-      t.paymentMethod.toUpperCase(),
-      t.subtotal,
-      t.shopSuppliesAmount,
-      t.taxAmount,
-      t.totalAmount,
-      t.status.toUpperCase()
-    ]);
-  });
-
-  summaryRows.push([""]);
-  summaryRows.push(["TOTAL COMPLETED TRANSACTION REVENUE ($):", "", "", "", "", "", "", "", "", "", grandTotal]);
-
-  const ws = XLSX.utils.aoa_to_sheet(summaryRows);
-  ws['!cols'] = [
-    { wch: 14 }, { wch: 20 }, { wch: 22 }, { wch: 20 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 14 }
-  ];
-
-  XLSX.utils.book_append_sheet(wb, ws, "Financial Transactions");
-  XLSX.writeFile(wb, `TheFrameShop_TransactionsLedger_${new Date().toISOString().split("T")[0]}.xlsx`);
-}
 
 export function exportPriceMatrixToExcel() {
   const wb = XLSX.utils.book_new();
@@ -425,7 +381,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [pinError, setPinError] = useState<string>("");
 
   // Navigation Tab State
-  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "transactions" | "pricematrix" | "media" | "help">("bookings");
+  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "pricematrix" | "media" | "help">("bookings");
 
   /**
    * Opens the guide as its own plain page so Paul can print it or save it as a
@@ -903,7 +859,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [calcPartsMarkupPct, setCalcPartsMarkupPct] = useState<number>(30);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -916,8 +871,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [invoiceSendStatus, setInvoiceSendStatus] = useState<{ loading: boolean; url: string | null; error: string | null }>({ loading: false, url: null, error: null });
 
   // POS Modal State
-  const [isPOSModalOpen, setIsPOSModalOpen] = useState<boolean>(false);
-  const [posInitialBooking, setPosInitialBooking] = useState<Booking | null>(null);
 
   // Bluetooth Printer Capabilities State
   const [btDeviceName, setBtDeviceName] = useState<string>(getActiveBluetoothDeviceName());
@@ -1005,41 +958,10 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     }
   };
 
-  const fetchTransactions = async () => {
-    try {
-      const res = await safeFetch("/api/transactions");
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.transactions || []);
-        setTransactions(list);
-      }
-    } catch {
-      // Gracefully handle network/sandboxing constraints
-    }
-  };
-
-  const handleRefundTransaction = async (txnId: string) => {
-    const reason = window.prompt("Enter internal refund / void audit reason for Paul's accounting:");
-    if (reason === null) return;
-    try {
-      const res = await safeFetch(`/api/transactions/${txnId}/refund`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: reason || "Customer refund issued by owner." }),
-      });
-      if (res.ok) {
-        fetchTransactions();
-        fetchBookings();
-      }
-    } catch {
-      // Silent error handler
-    }
-  };
 
   useEffect(() => {
     if (isOpen && isAuthenticated) {
       fetchBookings();
-      fetchTransactions();
     }
   }, [isOpen, isAuthenticated]);
 
@@ -1260,14 +1182,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const inShopCount = bookings.filter((b) => b.status === "in_shop").length;
   const completedCount = bookings.filter((b) => b.status === "completed").length;
 
-  // Transaction Financial Ledger Calculations
-  const completedTxns = transactions.filter((t) => t.status === "completed");
-  const totalTxnRevenue = completedTxns.reduce((sum, t) => sum + t.totalAmount, 0);
-  const cardTxns = completedTxns.filter((t) => t.paymentMethod === "card");
-  const cardRevenue = cardTxns.reduce((sum, t) => sum + t.totalAmount, 0);
-  const cashTxns = completedTxns.filter((t) => t.paymentMethod === "cash");
-  const cashRevenue = cashTxns.reduce((sum, t) => sum + t.totalAmount, 0);
-  const taxRevenue = completedTxns.reduce((sum, t) => sum + t.taxAmount, 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-zinc-950/95 backdrop-blur-md animate-in fade-in duration-200 font-sans">
@@ -1296,18 +1210,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   }`}
                 >
                   📋 Work Orders &amp; Appointments ({bookings.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveMainTab("transactions")}
-                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    activeMainTab === "transactions"
-                      ? "bg-orange-600 text-white shadow"
-                      : "bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800"
-                  }`}
-                >
-                  💳 Customer POS &amp; Transactions ({transactions.length})
                 </button>
 
                 <button
@@ -1358,17 +1260,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
           <div className="flex items-center gap-2 flex-wrap">
             {isAuthenticated && (
               <>
-                <button
-                  onClick={() => {
-                    setPosInitialBooking(null);
-                    setIsPOSModalOpen(true);
-                  }}
-                  className="bg-orange-600 hover:bg-orange-500 text-white px-3 py-2 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg"
-                  title="Process New Customer POS Transaction"
-                >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span>+ Process Customer Transaction</span>
-                </button>
 
                 {activeMainTab === "bookings" ? (
                   <button
@@ -1378,15 +1269,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Invoices Excel</span>
-                  </button>
-                ) : activeMainTab === "transactions" ? (
-                  <button
-                    onClick={() => exportAllTransactionsToExcel(transactions)}
-                    className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 px-3 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-                    title="Export Transactions Ledger to Microsoft Excel Workbook"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Transactions Excel</span>
                   </button>
                 ) : (
                   <button
@@ -1402,8 +1284,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                 <button
                   onClick={() => {
                     fetchBookings();
-                    fetchTransactions();
-                  }}
+                                }}
                   className="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 px-3 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Refresh Data"
                 >
@@ -2686,155 +2567,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   </div>
                 ))}
               </div>
-            ) : activeMainTab === "transactions" ? (
-              /* Financial POS Transactions View */
-              <div className="space-y-6">
-                {/* Financial KPI Bar */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-sans">
-                  <div className="bg-zinc-950 p-4 border border-zinc-800">
-                    <div className="text-[10px] font-black uppercase text-emerald-400 tracking-widest flex items-center gap-1">
-                      <DollarSign className="w-3.5 h-3.5" />
-                      <span>Total POS Revenue</span>
-                    </div>
-                    <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono mt-1">
-                      ${totalTxnRevenue.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{completedTxns.length} Completed Txns</div>
-                  </div>
-
-                  <div className="bg-zinc-950 p-4 border border-zinc-800">
-                    <div className="text-[10px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-1">
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>Card Volume</span>
-                    </div>
-                    <div className="text-2xl sm:text-3xl font-black text-zinc-100 font-mono mt-1">
-                      ${cardRevenue.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{cardTxns.length} Card Payments</div>
-                  </div>
-
-                  <div className="bg-zinc-950 p-4 border border-zinc-800">
-                    <div className="text-[10px] font-black uppercase text-amber-400 tracking-widest flex items-center gap-1">
-                      <Coins className="w-3.5 h-3.5" />
-                      <span>Cash Drawer</span>
-                    </div>
-                    <div className="text-2xl sm:text-3xl font-black text-zinc-100 font-mono mt-1">
-                      ${cashRevenue.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{cashTxns.length} Cash Payments</div>
-                  </div>
-
-                  <div className="bg-zinc-950 p-4 border border-zinc-800">
-                    <div className="text-[10px] font-black uppercase text-orange-400 tracking-widest flex items-center gap-1">
-                      <Tag className="w-3.5 h-3.5" />
-                      <span>Sales Tax Collected</span>
-                    </div>
-                    <div className="text-2xl sm:text-3xl font-black text-zinc-100 font-mono mt-1">
-                      ${taxRevenue.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-1">8.25% TX State Tax</div>
-                  </div>
-                </div>
-
-                {/* Transactions Ledger Table */}
-                <div className="bg-zinc-950 border border-zinc-800 p-4 space-y-3 font-sans">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-1.5">
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>TRANSACTIONS LEDGER &amp; REGISTER LOG</span>
-                      </div>
-                      <h3 className="text-lg font-black text-zinc-100 uppercase italic">
-                        CUSTOMER FINANCIAL TRANSACTIONS
-                      </h3>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPosInitialBooking(null);
-                        setIsPOSModalOpen(true);
-                      }}
-                      className="bg-orange-600 hover:bg-orange-500 text-white font-black px-4 py-2 text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>+ Process Customer POS Sale</span>
-                    </button>
-                  </div>
-
-                  {transactions.length === 0 ? (
-                    <div className="text-center py-10 text-zinc-500 text-xs italic">
-                      No customer transactions logged yet. Click "+ Process Customer POS Sale" above to record a payment.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border border-zinc-800">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-zinc-900 text-zinc-400 font-black uppercase text-[10px] border-b border-zinc-800">
-                          <tr>
-                            <th className="p-2.5">Date / Txn ID</th>
-                            <th className="p-2.5">Rider &amp; Bike</th>
-                            <th className="p-2.5">Method</th>
-                            <th className="p-2.5">Items Summary</th>
-                            <th className="p-2.5 text-right">Total ($)</th>
-                            <th className="p-2.5 text-center">Status</th>
-                            <th className="p-2.5 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-800/70 font-mono">
-                          {transactions.map((t) => (
-                            <tr key={t.id} className="hover:bg-zinc-900/60 transition-colors">
-                              <td className="p-2.5">
-                                <div className="text-orange-400 font-bold">{t.id}</div>
-                                <div className="text-[10px] text-zinc-500">{new Date(t.timestamp).toLocaleString()}</div>
-                              </td>
-                              <td className="p-2.5 font-sans">
-                                <div className="text-zinc-100 font-bold">{t.customerName}</div>
-                                <div className="text-[10px] text-zinc-400 italic">{t.motorcycle}</div>
-                              </td>
-                              <td className="p-2.5 uppercase font-sans font-bold">
-                                <span className="bg-zinc-900 px-2 py-0.5 border border-zinc-800 text-zinc-300">
-                                  {t.paymentMethod}
-                                </span>
-                                {t.paymentDetails?.authCode && (
-                                  <div className="text-[9px] text-zinc-500 font-mono mt-0.5">{t.paymentDetails.authCode}</div>
-                                )}
-                              </td>
-                              <td className="p-2.5 font-sans text-zinc-300 text-[11px]">
-                                {t.items.map((it) => it.description).join(", ")}
-                              </td>
-                              <td className="p-2.5 text-right font-bold text-orange-400 text-sm">
-                                ${t.totalAmount.toFixed(2)}
-                              </td>
-                              <td className="p-2.5 text-center">
-                                <span
-                                  className={`text-[9px] font-black uppercase px-2 py-0.5 border font-sans ${
-                                    t.status === "completed"
-                                      ? "bg-emerald-950 text-emerald-400 border-emerald-600/40"
-                                      : "bg-red-950 text-red-400 border-red-600/40"
-                                  }`}
-                                >
-                                  {t.status}
-                                </span>
-                              </td>
-                              <td className="p-2.5 text-right font-sans">
-                                {t.status === "completed" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRefundTransaction(t.id)}
-                                    className="text-[10px] text-red-400 hover:text-red-300 uppercase font-bold bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-2 py-1 cursor-pointer"
-                                  >
-                                    Refund / Void
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
             ) : (
               /* Work Orders & Appointments View */
               <div className="space-y-6">
@@ -3097,16 +2829,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                                 {b.invoice.paymentStatus.replace("_", " ")}
                               </span>
                               <button
-                                onClick={() => {
-                                  setPosInitialBooking(b);
-                                  setIsPOSModalOpen(true);
-                                }}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors shadow"
-                              >
-                                <DollarSign className="w-3 h-3" />
-                                <span>Charge Customer (POS)</span>
-                              </button>
-                              <button
                                 onClick={() => openInvoiceModal(b)}
                                 className="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1 text-[10px] font-black uppercase tracking-wider cursor-pointer transition-colors"
                               >
@@ -3123,16 +2845,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  setPosInitialBooking(b);
-                                  setIsPOSModalOpen(true);
-                                }}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors shadow"
-                              >
-                                <DollarSign className="w-3.5 h-3.5" />
-                                <span>Charge Customer (POS)</span>
-                              </button>
                               <button
                                 onClick={() => openInvoiceModal(b)}
                                 className="bg-zinc-950 hover:bg-orange-600/20 text-orange-400 hover:text-orange-300 border border-orange-600/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -3738,18 +3450,6 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
           </div>
         </div>
       )}
-
-      {/* Point of Sale & Customer Payment Transaction Modal */}
-      <TransactionPOSModal
-        isOpen={isPOSModalOpen}
-        onClose={() => setIsPOSModalOpen(false)}
-        initialBooking={posInitialBooking}
-        existingBookings={bookings}
-        onTransactionComplete={() => {
-          fetchTransactions();
-          fetchBookings();
-        }}
-      />
 
     </div>
   );

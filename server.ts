@@ -235,10 +235,9 @@ app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
   }
 });
 
-// In-memory + local JSON file persistence for appointment bookings & transactions
+// In-memory + local JSON file persistence for appointment bookings
 const DATA_DIR = path.join(process.cwd(), "data");
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
-const TRANSACTIONS_FILE = path.join(DATA_DIR, "transactions.json");
 const VIDEOS_FILE = path.join(DATA_DIR, "videos.json");
 
 /* ---------------------------------------------------------------------------
@@ -421,156 +420,8 @@ interface Booking {
   invoice?: InternalInvoice;
 }
 
-export interface TransactionLineItem {
-  id: string;
-  description: string;
-  category: "labor" | "parts" | "laser_scan" | "supplies" | "sublet" | "deposit";
-  quantity: number;
-  rate: number;
-  amount: number;
-}
 
-export interface Transaction {
-  id: string;
-  timestamp: string;
-  type: "work_order_payment" | "service_deposit" | "laser_scan_walkin" | "parts_sale" | "custom_fabrication";
-  bookingId?: string;
-  ticketNumber?: string;
-  invoiceNumber?: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  motorcycle: string;
-  items: TransactionLineItem[];
-  subtotal: number;
-  shopSuppliesAmount: number;
-  taxAmount: number;
-  totalAmount: number;
-  amountPaid: number;
-  changeGiven: number;
-  paymentMethod: "card" | "cash" | "check" | "split" | "bnpl";
-  paymentDetails?: {
-    cardBrand?: string;
-    cardLast4?: string;
-    authCode?: string;
-    checkNumber?: string;
-    splitCashAmount?: number;
-    splitCardAmount?: number;
-    notes?: string;
-  };
-  status: "completed" | "refunded" | "voided";
-  processedBy: string;
-  refundReason?: string;
-  refundTimestamp?: string;
-}
 
-// Initial mock seed transactions
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: "TXN-882031",
-    timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-    type: "work_order_payment",
-    bookingId: "bk-103",
-    ticketNumber: "FS-993102",
-    invoiceNumber: "INV-993102",
-    customerName: "Colton Hayes",
-    customerPhone: "(713) 555-3910",
-    customerEmail: "chayes@example.com",
-    motorcycle: "2021 Indian Challenger Dark Horse",
-    items: [
-      {
-        id: "li-1",
-        description: "Triple Tree Alignment & Fork Stiction Anti-Bind Calibration",
-        category: "labor",
-        quantity: 2.0,
-        rate: 125.0,
-        amount: 250.0,
-      },
-      {
-        id: "li-2",
-        description: "Performance Fork Fluid & Anti-Stiction Seal Kit",
-        category: "parts",
-        quantity: 1,
-        rate: 55.0,
-        amount: 55.0,
-      },
-    ],
-    subtotal: 305.0,
-    shopSuppliesAmount: 15.25,
-    taxAmount: 26.42,
-    totalAmount: 346.67,
-    amountPaid: 346.67,
-    changeGiven: 0.0,
-    paymentMethod: "card",
-    paymentDetails: {
-      cardBrand: "Visa",
-      cardLast4: "4920",
-      authCode: "AUTH-89210",
-      notes: "Customer swiped card on shop terminal."
-    },
-    status: "completed",
-    processedBy: "Paul Heary (Owner)"
-  },
-  {
-    id: "TXN-104922",
-    timestamp: new Date(Date.now() - 3600000 * 6).toISOString(),
-    type: "laser_scan_walkin",
-    customerName: "Brad 'Gator' Vance",
-    customerPhone: "(281) 555-9012",
-    customerEmail: "gator.vance@example.com",
-    motorcycle: "2023 Harley-Davidson Street Glide ST 117",
-    items: [
-      {
-        id: "li-walk-1",
-        description: "Express Walk-In 3D Laser Alignment & Frame Shooter Geometry Scan",
-        category: "laser_scan",
-        quantity: 1,
-        rate: 75.0,
-        amount: 75.0,
-      }
-    ],
-    subtotal: 75.0,
-    shopSuppliesAmount: 3.75,
-    taxAmount: 6.50,
-    totalAmount: 85.25,
-    amountPaid: 100.0,
-    changeGiven: 14.75,
-    paymentMethod: "cash",
-    paymentDetails: {
-      notes: "Cash payment. $100 bill tendered, $14.75 change given from register."
-    },
-    status: "completed",
-    processedBy: "Paul Heary (Owner)"
-  }
-];
-
-function loadTransactions(): Transaction[] {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(TRANSACTIONS_FILE)) {
-      fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(INITIAL_TRANSACTIONS, null, 2));
-      return INITIAL_TRANSACTIONS;
-    }
-    const data = fs.readFileSync(TRANSACTIONS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (err) {
-    console.error("Error reading transactions file:", err);
-    return INITIAL_TRANSACTIONS;
-  }
-}
-
-function saveTransactions(transactions: Transaction[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(transactions, null, 2));
-  } catch (err) {
-    console.error("Error saving transactions file:", err);
-  }
-}
 
 // Initial mock seed data if file doesn't exist
 const INITIAL_BOOKINGS: Booking[] = [
@@ -826,146 +677,6 @@ app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------------------
-// Transaction / POS API Routes
-// -----------------------------------------------------------------------------
-
-// GET /api/transactions - owner only. Every row carries a customer's name,
-// phone, email and what they were charged; nothing public needs to read it.
-app.get("/api/transactions", requireAdmin, (req, res) => {
-  try {
-    const transactions = loadTransactions();
-    const { status, type } = req.query;
-    let filtered = transactions;
-    if (status && typeof status === "string" && status !== "all") {
-      filtered = filtered.filter((t) => t.status === status);
-    }
-    if (type && typeof type === "string" && type !== "all") {
-      filtered = filtered.filter((t) => t.type === type);
-    }
-    res.json({ transactions: filtered });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to load transaction ledger." });
-  }
-});
-
-// POST /api/transactions - Process & record new customer payment transaction
-app.post("/api/transactions", requireAdmin, (req, res) => {
-  try {
-    const {
-      type,
-      bookingId,
-      ticketNumber,
-      invoiceNumber,
-      customerName,
-      customerPhone,
-      customerEmail,
-      motorcycle,
-      items,
-      subtotal,
-      shopSuppliesAmount,
-      taxAmount,
-      totalAmount,
-      amountPaid,
-      changeGiven,
-      paymentMethod,
-      paymentDetails,
-    } = req.body;
-
-    if (!customerName || !items || !totalAmount || !paymentMethod) {
-      return res.status(400).json({ error: "Missing required transaction fields." });
-    }
-
-    const txnId = "TXN-" + Math.floor(100000 + Math.random() * 900000);
-    const newTxn: Transaction = {
-      id: txnId,
-      timestamp: new Date().toISOString(),
-      type: type || "work_order_payment",
-      bookingId,
-      ticketNumber,
-      invoiceNumber,
-      customerName,
-      customerPhone: customerPhone || "N/A",
-      customerEmail: customerEmail || "N/A",
-      motorcycle: motorcycle || "Customer Bike",
-      items,
-      subtotal: parseFloat(subtotal) || 0,
-      shopSuppliesAmount: parseFloat(shopSuppliesAmount) || 0,
-      taxAmount: parseFloat(taxAmount) || 0,
-      totalAmount: parseFloat(totalAmount) || 0,
-      amountPaid: parseFloat(amountPaid) || parseFloat(totalAmount) || 0,
-      changeGiven: parseFloat(changeGiven) || 0,
-      paymentMethod,
-      paymentDetails,
-      status: "completed",
-      processedBy: "Paul Heary (Owner)",
-    };
-
-    const txns = loadTransactions();
-    txns.unshift(newTxn);
-    saveTransactions(txns);
-
-    // If associated with a booking work order, update booking invoice status
-    if (bookingId) {
-      const bookings = loadBookings();
-      const bIdx = bookings.findIndex((b) => b.id === bookingId);
-      if (bIdx !== -1) {
-        const newStatus = type === "service_deposit" ? "deposit_paid" : "paid_in_full";
-        if (bookings[bIdx].invoice) {
-          bookings[bIdx].invoice!.paymentStatus = newStatus;
-        }
-        if (newStatus === "paid_in_full" && bookings[bIdx].status === "in_shop") {
-          bookings[bIdx].status = "completed";
-        }
-        saveBookings(bookings);
-      }
-    }
-
-    console.log(`================================--------------------`);
-    console.log(`[CUSTOMER TRANSACTION PROCESSED - THE FRAME SHOP]:`);
-    console.log(`Txn ID: ${newTxn.id} | Amount: $${newTxn.totalAmount.toFixed(2)} | Method: ${newTxn.paymentMethod.toUpperCase()}`);
-    console.log(`Rider: ${newTxn.customerName} (${newTxn.motorcycle})`);
-    console.log(`================================--------------------`);
-
-    res.status(201).json({
-      success: true,
-      message: "Customer payment transaction executed and recorded successfully.",
-      transaction: newTxn,
-    });
-  } catch (err: any) {
-    console.error("Error logging transaction:", err);
-    res.status(500).json({ error: "Failed to record customer transaction." });
-  }
-});
-
-// PATCH /api/transactions/:id/refund - Issue refund or void transaction
-app.patch("/api/transactions/:id/refund", requireAdmin, (req, res) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    const txns = loadTransactions();
-    const idx = txns.findIndex((t) => t.id === id);
-
-    if (idx === -1) {
-      return res.status(404).json({ error: "Transaction record not found." });
-    }
-
-    txns[idx].status = "refunded";
-    txns[idx].refundReason = reason || "Customer requested refund / service adjustment.";
-    txns[idx].refundTimestamp = new Date().toISOString();
-
-    saveTransactions(txns);
-
-    console.log(`[TRANSACTION REFUNDED]: ${id} -> Reason: ${txns[idx].refundReason}`);
-
-    res.json({ success: true, transaction: txns[idx] });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to process refund." });
-  }
-});
-
-// POST /api/diagnostic - AI Motorcycle Chassis & Handling Diagnostics powered by Gemini
 app.post("/api/diagnostic", diagLimiter, async (req, res) => {
   try {
     const { motorcycleDetails, symptomDescription, speedRange } = req.body;
@@ -1125,6 +836,17 @@ app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Anything under /api that no route above claimed is a mistake, so say so in
+ * the language the caller is expecting. Without this it falls through to the
+ * single-page app and comes back as HTML with a 200, and the fetch that asked
+ * for it dies on "Unexpected token '<'" — which says nothing about the real
+ * problem being a wrong or removed endpoint.
+ */
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: `No such endpoint: ${req.method} /api${req.path}` });
+});
+
 // Start Express + Vite Server
 async function start() {
   if (process.env.NODE_ENV !== "production") {
@@ -1133,7 +855,7 @@ async function start() {
         middlewareMode: true,
         watch: {
           /**
-           * The server writes its own state — bookings, transactions, videos,
+           * The server writes its own state — bookings, videos,
            * media — into data/ inside the project. Left watched, every booking
            * a customer submitted made Vite reload the page, wiping the
            * confirmation screen with their ticket number on it before they
@@ -1163,8 +885,8 @@ async function start() {
       const where = process.env.NODE_ENV === "production" ? "PRODUCTION" : "development";
       console.warn(
         `\n[!] SHOP_API_SECRET is not set (${where}).\n` +
-        `    Owner-only routes are UNPROTECTED: bookings and transactions can be\n` +
-        `    read by anyone who can reach this server, customer details included.\n` +
+        `    Owner-only routes are UNPROTECTED: bookings and customer details\n` +
+        `    can be read by anyone who can reach this server.\n` +
         (process.env.NODE_ENV === "production"
           ? `    Set it now — generate one with:\n` +
             `    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"\n`
