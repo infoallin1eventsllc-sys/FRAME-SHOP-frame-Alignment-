@@ -21,6 +21,9 @@ import {
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
+/** Kept in step with SHOP_INFO.phone in src/data/shopData.ts. */
+const SHOP_INFO_PHONE = "(832) 628-5226";
+
 
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production",
@@ -973,8 +976,12 @@ app.post("/api/diagnostic", diagLimiter, async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({
-        error: "GEMINI_API_KEY is not configured.",
+      // A customer, not the developer, is reading this. Say what to do instead
+      // of naming an environment variable, and don't call it a server fault.
+      return res.status(503).json({
+        error:
+          "The diagnostic tool isn't switched on yet. Call or text Paul on " +
+          `${SHOP_INFO_PHONE} and he'll talk the symptoms through with you.`,
       });
     }
 
