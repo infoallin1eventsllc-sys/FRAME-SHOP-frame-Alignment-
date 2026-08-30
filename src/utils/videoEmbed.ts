@@ -36,6 +36,16 @@ const VIMEO_PATTERNS = [
 
 const FILE_EXTENSIONS = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i;
 
+/**
+ * Naming the embedding site outright, as well as relying on the referrer.
+ * YouTube needs to know which page is asking or it refuses with error 153, and
+ * a strict referrer policy anywhere in the chain would otherwise hide that.
+ */
+function originParam(): string {
+  if (typeof window === 'undefined' || !window.location?.origin) return '';
+  return `&origin=${encodeURIComponent(window.location.origin)}`;
+}
+
 export function parseVideoUrl(rawUrl: string): ParsedVideo {
   const url = (rawUrl || '').trim();
   if (!url) return { kind: 'unknown', originalUrl: rawUrl };
@@ -48,7 +58,7 @@ export function parseVideoUrl(rawUrl: string): ParsedVideo {
         kind: 'youtube',
         id,
         // nocookie so viewers aren't tracked before they press play.
-        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&autoplay=1`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&autoplay=1${originParam()}`,
         thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
         originalUrl: url,
       };

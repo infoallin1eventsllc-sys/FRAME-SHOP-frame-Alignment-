@@ -95,6 +95,12 @@ export const ShopVideos: React.FC = () => {
                       title={video.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
+                      /* Set here as well as on the server. YouTube refuses to
+                         play with error 153 if it cannot see which site is
+                         embedding it, and an iframe's own policy overrides the
+                         page's — so the player works even where the document
+                         is served with a stricter one. */
+                      referrerPolicy="strict-origin-when-cross-origin"
                       className="w-full h-full border-0"
                     />
                   ) : (
