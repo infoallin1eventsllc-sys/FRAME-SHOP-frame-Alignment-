@@ -71,7 +71,17 @@ export const ShopVideos: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Sized to the number of videos. A fixed three-column grid left a
+            single clip stranded at a third of the width. */}
+        <div
+          className={`grid grid-cols-1 gap-8 ${
+            videos.length === 1
+              ? 'max-w-4xl mx-auto'
+              : videos.length === 2
+                ? 'md:grid-cols-2 max-w-5xl mx-auto'
+                : 'md:grid-cols-2 lg:grid-cols-3'
+          }`}
+        >
           {videos.map(video => {
             const parsed = parseVideoUrl(video.url);
             const isPlaying = playingId === video.id;
