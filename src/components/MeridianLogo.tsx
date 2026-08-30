@@ -3,48 +3,44 @@ import React, { useState } from 'react';
 /**
  * Meridian Interface credit — the studio that built this site.
  *
- * The mark is the studio's own artwork, used as supplied and not redrawn. Drop
- * the file in at public/meridian-logo.png (or .svg and change the path) and it
- * appears here. Until then the credit still reads correctly as text, so the
- * footer is never showing a broken image.
+ * The artwork is the studio's own file, used exactly as supplied: not redrawn,
+ * recoloured or cropped. It carries its own wordmark, so no text is set beside
+ * it, and it has a light ground of its own, so on the dark footer it is given a
+ * panel in the same off-white rather than being knocked out or made transparent.
  */
 
 export const MERIDIAN_LOGO_SRC = '/meridian-logo.png';
 
 interface MeridianLogoProps {
-  /** Height of the mark in px. */
+  /** Height of the logo panel in px. */
   size?: number;
-  /** Show the "Meridian Interface" wordmark as text beside the mark. */
-  showWordmark?: boolean;
   className?: string;
 }
 
-export const MeridianLogo: React.FC<MeridianLogoProps> = ({
-  size = 26,
-  showWordmark = true,
-  className = '',
-}) => {
+export const MeridianLogo: React.FC<MeridianLogoProps> = ({ size = 76, className = '' }) => {
   const [logoMissing, setLogoMissing] = useState(false);
 
+  // If the file is ever absent the credit still reads, rather than showing a
+  // broken image on a client's live site.
+  if (logoMissing) {
+    return (
+      <span className={`font-semibold uppercase tracking-[0.1em] ${className}`}>
+        Meridian Interface
+      </span>
+    );
+  }
+
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      {!logoMissing && (
-        <img
-          src={MERIDIAN_LOGO_SRC}
-          alt="Meridian Interface"
-          height={size}
-          style={{ height: size, width: 'auto', display: 'block', flexShrink: 0 }}
-          onError={() => setLogoMissing(true)}
-        />
-      )}
-      {(showWordmark || logoMissing) && (
-        <span
-          className="font-semibold uppercase leading-none whitespace-nowrap"
-          style={{ fontSize: size * 0.34, letterSpacing: '0.1em' }}
-        >
-          Meridian Interface
-        </span>
-      )}
+    <span
+      className={`inline-flex items-center justify-center rounded-sm overflow-hidden ${className}`}
+      style={{ background: '#F5F4F0', padding: size * 0.02 }}
+    >
+      <img
+        src={MERIDIAN_LOGO_SRC}
+        alt="Meridian Interface"
+        onError={() => setLogoMissing(true)}
+        style={{ height: size, width: size, display: 'block' }}
+      />
     </span>
   );
 };

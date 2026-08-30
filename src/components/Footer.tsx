@@ -146,17 +146,18 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
         </div>
 
         {/* Studio credit */}
-        <div className="pt-6 mt-6 border-t border-zinc-900 flex items-center justify-center">
+        <div className="pt-8 mt-6 border-t border-zinc-900 flex flex-col items-center gap-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
+            This website was built by
+          </span>
           <a
             href="https://meridianinterface.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-3 text-zinc-600 hover:text-zinc-300 transition-colors"
+            aria-label="Meridian Interface"
+            className="opacity-80 hover:opacity-100 transition-opacity"
           >
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em]">
-              Site by
-            </span>
-            <MeridianLogo size={20} />
+            <MeridianLogo size={150} />
           </a>
         </div>
 
