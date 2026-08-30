@@ -184,7 +184,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
   const result = isCompleted ? calculateResult() : null;
 
   return (
-    <section id="diagnostic" className="py-24 bg-zinc-950 border-t border-zinc-800 relative font-sans">
+    <section id="diagnostic" className="py-24 bg-white border-t border-zinc-200 relative font-sans">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         
         {/* Header */}
@@ -193,23 +193,23 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
             <Gauge className="w-3.5 h-3.5 text-orange-600" />
             <span>Chassis &amp; Handling Diagnostics</span>
           </div>
-          <h2 className="text-4xl sm:text-6xl font-black text-zinc-100 uppercase italic tracking-tighter">
+          <h2 className="text-4xl sm:text-6xl font-black text-zinc-900 uppercase italic tracking-tighter">
             IS YOUR BIKE <span className="text-orange-600">TRACKING RIGHT?</span>
           </h2>
-          <p className="text-zinc-400 text-sm sm:text-base font-normal">
+          <p className="text-zinc-600 text-sm sm:text-base font-normal">
             Analyze your motorcycle's handling via our guided questionnaire or consult Paul's AI Laser Tech Advisor.
           </p>
         </div>
 
         {/* Tab Selection */}
         <div className="flex justify-center mb-8">
-          <div className="bg-zinc-900 border border-zinc-800 p-1 inline-flex gap-1">
+          <div className="bg-zinc-50 border border-zinc-200 p-1 inline-flex gap-1">
             <button
               onClick={() => setActiveTab('guided')}
               className={`px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'guided'
                   ? 'bg-orange-600 text-white shadow-lg'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  : 'text-zinc-600 hover:text-zinc-800'
               }`}
             >
               <Gauge className="w-4 h-4" />
@@ -221,25 +221,25 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               className={`px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'ai'
                   ? 'bg-orange-600 text-white shadow-lg'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  : 'text-zinc-600 hover:text-zinc-800'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
+              <Sparkles className="w-4 h-4 text-amber-700" />
               <span>AI Laser Tech Advisor</span>
-              <span className="text-[9px] bg-zinc-950 text-orange-400 border border-orange-500/40 px-1.5 py-0.5 font-mono">GEMINI AI</span>
+              <span className="text-[9px] bg-white text-orange-400 border border-orange-500/40 px-1.5 py-0.5 font-mono">GEMINI AI</span>
             </button>
           </div>
         </div>
 
         {/* Diagnostic Container */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-none p-6 sm:p-10 shadow-2xl relative">
+        <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-10 shadow-2xl relative">
           
           {activeTab === 'guided' ? (
             /* Guided Questionnaire */
             !isCompleted ? (
             <div>
               {/* Progress Indicator */}
-              <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-800 text-xs text-zinc-400">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-200 text-xs text-zinc-600">
                 <span className="font-black text-orange-500 uppercase tracking-widest">
                   Question {currentStep + 1} of {QUESTIONS.length}
                 </span>
@@ -252,7 +252,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                           ? 'w-8 bg-orange-600'
                           : idx < currentStep
                           ? 'w-3 bg-orange-600/50'
-                          : 'w-3 bg-zinc-800'
+                          : 'w-3 bg-zinc-100'
                       }`}
                     />
                   ))}
@@ -261,10 +261,10 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
               {/* Question Copy */}
               <div className="mb-8">
-                <h3 className="text-2xl sm:text-3xl font-black text-zinc-100 mb-2 uppercase italic">
+                <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 mb-2 uppercase italic">
                   {QUESTIONS[currentStep].title}
                 </h3>
-                <p className="text-zinc-400 text-sm font-normal">
+                <p className="text-zinc-600 text-sm font-normal">
                   {QUESTIONS[currentStep].subtitle}
                 </p>
               </div>
@@ -279,21 +279,21 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                       onClick={() => handleSelectOption(idx)}
                       className={`w-full text-left p-4 rounded-none border transition-all flex items-center justify-between group cursor-pointer ${
                         isSelected
-                          ? 'bg-zinc-950 border-orange-600 text-zinc-50 shadow-lg'
-                          : 'bg-zinc-950 hover:bg-zinc-900 border-zinc-800 text-zinc-300'
+                          ? 'bg-white border-orange-600 text-zinc-900 shadow-lg'
+                          : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-6 h-6 rounded-none border flex items-center justify-center text-xs font-black transition-colors ${
                           isSelected
                             ? 'border-orange-600 bg-orange-600 text-zinc-950'
-                            : 'border-zinc-700 text-zinc-500 group-hover:border-orange-600/50'
+                            : 'border-zinc-300 text-zinc-500 group-hover:border-orange-600/50'
                         }`}>
                           {String.fromCharCode(65 + idx)}
                         </div>
                         <span className="text-sm sm:text-base font-bold">{opt.label}</span>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
+                      <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
                     </button>
                   );
                 })}
@@ -301,7 +301,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
               {/* Back / Navigation Controls */}
               {currentStep > 0 && (
-                <div className="mt-8 pt-4 border-t border-zinc-800 flex justify-between items-center text-xs">
+                <div className="mt-8 pt-4 border-t border-zinc-200 flex justify-between items-center text-xs">
                   <button
                     onClick={() => setCurrentStep(currentStep - 1)}
                     className="text-zinc-500 hover:text-white uppercase font-black tracking-widest"
@@ -314,10 +314,10 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
           ) : (
             /* Result Panel */
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
+              <div className="flex items-center justify-between pb-4 border-b border-zinc-200">
                 <div className="flex items-center gap-3">
                   {result?.severity === 'critical' && (
-                    <div className="w-10 h-10 rounded-none bg-red-500/20 text-red-500 border border-red-500/40 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-none bg-red-50 text-red-700 border border-red-300 flex items-center justify-center">
                       <AlertTriangle className="w-6 h-6" />
                     </div>
                   )}
@@ -327,13 +327,13 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                     </div>
                   )}
                   {result?.severity === 'ok' && (
-                    <div className="w-10 h-10 rounded-none bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center justify-center">
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                   )}
                   <div>
                     <div className="text-[10px] uppercase tracking-widest font-black text-orange-500">Diagnostic Verdict</div>
-                    <h3 className="text-xl sm:text-3xl font-black text-zinc-100 uppercase italic">
+                    <h3 className="text-xl sm:text-3xl font-black text-zinc-900 uppercase italic">
                       {result?.title}
                     </h3>
                   </div>
@@ -341,14 +341,14 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
                 <button
                   onClick={handleReset}
-                  className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 bg-zinc-950 px-3 py-2 rounded-none border border-zinc-800 cursor-pointer font-bold uppercase tracking-wider"
+                  className="text-xs text-zinc-600 hover:text-white flex items-center gap-1 bg-white px-3 py-2 rounded-none border border-zinc-200 cursor-pointer font-bold uppercase tracking-wider"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Retake</span>
                 </button>
               </div>
 
-              <p className="text-zinc-300 text-sm leading-relaxed font-normal bg-zinc-950 p-4 rounded-none border border-zinc-800">
+              <p className="text-zinc-700 text-sm leading-relaxed font-normal bg-white p-4 rounded-none border border-zinc-200">
                 {result?.description}
               </p>
 
@@ -358,10 +358,10 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {result?.recommendedServices.map((svcId, idx) => (
-                    <div key={idx} className="bg-zinc-950 p-4 rounded-none border border-zinc-800 flex items-center justify-between">
+                    <div key={idx} className="bg-white p-4 rounded-none border border-zinc-200 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-orange-600" />
-                        <span className="text-xs font-bold text-zinc-100 uppercase tracking-wider">
+                        <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
                           {svcId.replace('-', ' ')}
                         </span>
                       </div>
@@ -378,10 +378,10 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               </div>
 
               {/* Primary Call To Action */}
-              <div className="p-6 rounded-none bg-zinc-950 border border-orange-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="p-6 rounded-none bg-white border border-orange-600 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <div className="text-base font-black text-zinc-100 uppercase italic">Ready to get your bike riding true?</div>
-                  <div className="text-xs text-zinc-400">Book a precision 3D laser scan appointment with Paul Hurey in Spring, TX.</div>
+                  <div className="text-base font-black text-zinc-900 uppercase italic">Ready to get your bike riding true?</div>
+                  <div className="text-xs text-zinc-600">Book a precision 3D laser scan appointment with Paul Hurey in Spring, TX.</div>
                 </div>
 
                 <button
@@ -397,14 +397,14 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
             /* AI Laser Tech Advisor Tab */
             <div className="space-y-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 text-xs font-black uppercase text-amber-400 tracking-widest bg-amber-950/60 border border-amber-600/40 px-3 py-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <div className="inline-flex items-center gap-2 text-xs font-black uppercase text-amber-700 tracking-widest bg-amber-50 border border-amber-300 px-3 py-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
                   <span>Interactive AI Chassis Diagnostic Assistant</span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-black text-zinc-100 uppercase italic">
+                <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 uppercase italic">
                   DESCRIBE YOUR MOTORCYCLE'S <span className="text-orange-600">HANDLING ISSUE</span>
                 </h3>
-                <p className="text-xs sm:text-sm text-zinc-400 font-normal">
+                <p className="text-xs sm:text-sm text-zinc-600 font-normal">
                   Type your motorcycle model and custom symptoms (e.g. wobble speed, pull under braking, or post-pothole vibration). Our server-side Gemini AI model evaluates your chassis geometry and recommends the exact alignment protocol.
                 </p>
               </div>
@@ -412,7 +412,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               <form onSubmit={handleRunAiDiagnostic} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-black uppercase text-zinc-300 tracking-widest mb-1.5">
+                    <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                       Motorcycle Model &amp; Year
                     </label>
                     <input
@@ -420,19 +420,19 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                       value={aiBikeModel}
                       onChange={(e) => setAiBikeModel(e.target.value)}
                       placeholder="e.g., 2021 Harley-Davidson Road Glide Special"
-                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 text-zinc-100 p-3 text-sm focus:outline-none rounded-none"
+                      className="w-full bg-white border border-zinc-200 focus:border-orange-600 text-zinc-900 p-3 text-sm focus:outline-none rounded-none"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-zinc-300 tracking-widest mb-1.5">
+                    <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                       Speed Range Where Issue Occurs
                     </label>
                     <select
                       value={aiSpeedRange}
                       onChange={(e) => setAiSpeedRange(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 text-zinc-100 p-3 text-sm focus:outline-none rounded-none"
+                      className="w-full bg-white border border-zinc-200 focus:border-orange-600 text-zinc-900 p-3 text-sm focus:outline-none rounded-none"
                     >
                       <option value="65 - 80 MPH Highway">65 - 80 MPH Highway (High-Speed Wobble)</option>
                       <option value="40 - 55 MPH Sweepers">40 - 55 MPH Sweepers (Cornering Instability)</option>
@@ -444,7 +444,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-zinc-300 tracking-widest mb-1.5">
+                  <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                     Describe Handling Symptoms or Modifications
                   </label>
                   <textarea
@@ -452,32 +452,32 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                     onChange={(e) => setAiSymptom(e.target.value)}
                     placeholder="e.g. When taking my hands slightly off the handlebars at 70mph, the rear bagger end sways left and right. Recently had a 128ci kit installed and hit a freeway bump..."
                     rows={3}
-                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 text-zinc-100 p-3 text-sm focus:outline-none rounded-none"
+                    className="w-full bg-white border border-zinc-200 focus:border-orange-600 text-zinc-900 p-3 text-sm focus:outline-none rounded-none"
                     required
                   />
                 </div>
 
                 {/* Example Quick Prompt Chips */}
-                <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-400">
+                <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-600">
                   <span className="font-bold text-zinc-500 uppercase">Quick Examples:</span>
                   <button
                     type="button"
                     onClick={() => setAiSymptom("Rear end sways violently in highway sweepers above 75mph on my Road Glide.")}
-                    className="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1 text-zinc-300 transition-colors cursor-pointer"
+                    className="bg-white hover:bg-zinc-100 border border-zinc-200 px-2.5 py-1 text-zinc-700 transition-colors cursor-pointer"
                   >
                     "75mph Bagger Wobble"
                   </button>
                   <button
                     type="button"
                     onClick={() => setAiSymptom("Bike pulls hard to the right when riding straight. Must lean my body left.")}
-                    className="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1 text-zinc-300 transition-colors cursor-pointer"
+                    className="bg-white hover:bg-zinc-100 border border-zinc-200 px-2.5 py-1 text-zinc-700 transition-colors cursor-pointer"
                   >
                     "Pulls Hard Right"
                   </button>
                   <button
                     type="button"
                     onClick={() => setAiSymptom("Drive belt edge is fraying on right side and rear tire wears unevenly.")}
-                    className="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1 text-zinc-300 transition-colors cursor-pointer"
+                    className="bg-white hover:bg-zinc-100 border border-zinc-200 px-2.5 py-1 text-zinc-700 transition-colors cursor-pointer"
                   >
                     "Frayed Belt &amp; Uneven Wear"
                   </button>
@@ -486,16 +486,16 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                 <button
                   type="submit"
                   disabled={aiLoading}
-                  className="bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-800 text-white font-black px-8 py-3.5 rounded-none uppercase tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors w-full sm:w-auto"
+                  className="bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-100 text-white font-black px-8 py-3.5 rounded-none uppercase tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors w-full sm:w-auto"
                 >
                   {aiLoading ? (
                     <>
-                      <Cpu className="w-4 h-4 animate-spin text-amber-300" />
+                      <Cpu className="w-4 h-4 animate-spin text-amber-700" />
                       <span>Analyzing Geometry with Gemini AI...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <Sparkles className="w-4 h-4 text-amber-700" />
                       <span>Analyze with AI Laser Tech</span>
                     </>
                   )}
@@ -503,26 +503,26 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               </form>
 
               {aiError && (
-                <div className="p-4 bg-red-950/80 border border-red-600/60 text-red-300 text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <div className="p-4 bg-red-50 border border-red-300 text-red-700 text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-700 flex-shrink-0" />
                   <span>{aiError}</span>
                 </div>
               )}
 
               {/* AI Diagnostic Output Card */}
               {aiResult && (
-                <div className="bg-zinc-950 border-2 border-orange-600/80 p-6 space-y-5 animate-in fade-in duration-300 shadow-2xl">
-                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3 flex-wrap gap-2">
+                <div className="bg-white border-2 border-orange-600/80 p-6 space-y-5 animate-in fade-in duration-300 shadow-2xl">
+                  <div className="flex items-center justify-between border-b border-zinc-200 pb-3 flex-wrap gap-2">
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-950/80 px-2.5 py-1 border border-amber-600/40">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 border border-amber-300">
                         {aiResult.severityLevel}
                       </span>
-                      <h4 className="text-xl sm:text-2xl font-black text-zinc-100 uppercase italic mt-2">
+                      <h4 className="text-xl sm:text-2xl font-black text-zinc-900 uppercase italic mt-2">
                         {aiResult.diagnosisTitle}
                       </h4>
                     </div>
 
-                    <div className="text-xs text-zinc-400 font-mono">
+                    <div className="text-xs text-zinc-600 font-mono">
                       Estimated Labor: <strong className="text-orange-500">{aiResult.estimatedLaborHours}</strong>
                     </div>
                   </div>
@@ -531,18 +531,18 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                     <div className="text-xs font-black uppercase text-orange-500 tracking-widest">
                       Mechanical Analysis &amp; Laser Protocol
                     </div>
-                    <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal bg-zinc-900/80 p-4 border border-zinc-800">
+                    <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-normal bg-zinc-50/80 p-4 border border-zinc-200">
                       {aiResult.technicalExplanation}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs font-black uppercase text-zinc-400 tracking-widest">
+                    <div className="text-xs font-black uppercase text-zinc-600 tracking-widest">
                       Primary Root Causes
                     </div>
-                    <ul className="space-y-1.5 text-xs text-zinc-300 font-bold">
+                    <ul className="space-y-1.5 text-xs text-zinc-700 font-bold">
                       {aiResult.likelyCauses && aiResult.likelyCauses.map((cause: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 bg-zinc-900 p-2.5 border border-zinc-800">
+                        <li key={i} className="flex items-start gap-2 bg-zinc-50 p-2.5 border border-zinc-200">
                           <Wrench className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
                           <span>{cause}</span>
                         </li>
@@ -551,9 +551,9 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   </div>
 
                   {/* Booking Trigger CTA */}
-                  <div className="pt-3 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="text-xs text-zinc-400">
-                      Recommended Service: <strong className="text-zinc-100">{aiResult.recommendedServiceName}</strong>
+                  <div className="pt-3 border-t border-zinc-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="text-xs text-zinc-600">
+                      Recommended Service: <strong className="text-zinc-900">{aiResult.recommendedServiceName}</strong>
                     </div>
 
                     <button

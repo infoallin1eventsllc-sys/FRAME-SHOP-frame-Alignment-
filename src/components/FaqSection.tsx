@@ -10,7 +10,7 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
   };
 
   return (
-    <section id="faqs" className="py-24 bg-zinc-900 border-t border-zinc-800 font-sans">
+    <section id="faqs" className="py-24 bg-zinc-50 border-t border-zinc-200 font-sans">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         
         {/* Header */}
@@ -19,10 +19,10 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
             <HelpCircle className="w-4 h-4 text-orange-600" />
             <span>Got Questions? We Have Answers.</span>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-black text-zinc-100 uppercase italic tracking-tighter">
+          <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 uppercase italic tracking-tighter">
             FREQUENTLY ASKED <span className="text-orange-600">QUESTIONS</span>
           </h2>
-          <p className="text-zinc-400 text-sm sm:text-base font-normal max-w-2xl mx-auto">
+          <p className="text-zinc-600 text-sm sm:text-base font-normal max-w-2xl mx-auto">
             Everything you need to know about motorcycle frame alignment, high-speed wobble diagnostics, and shop policies at The Frame Shop.
           </p>
         </div>
@@ -34,22 +34,22 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
             return (
               <div
                 key={idx}
-                className="bg-zinc-950 border border-zinc-800 rounded-none overflow-hidden transition-all"
+                className="bg-white border border-zinc-200 rounded-none overflow-hidden transition-all"
               >
                 <button
                   onClick={() => toggleFaq(idx)}
-                  className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-900/60 transition-colors"
+                  className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-50/60 transition-colors"
                 >
-                  <span className="font-black text-zinc-100 text-base sm:text-lg uppercase tracking-tight italic">
+                  <span className="font-black text-zinc-900 text-base sm:text-lg uppercase tracking-tight italic">
                     {faq.q}
                   </span>
-                  <div className="bg-zinc-900 border border-zinc-800 p-2 text-orange-500 flex-shrink-0">
+                  <div className="bg-zinc-50 border border-zinc-200 p-2 text-orange-500 flex-shrink-0">
                     {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-6 sm:px-6 sm:pb-6 text-zinc-300 text-sm sm:text-base leading-relaxed border-t border-zinc-900 pt-4 font-normal">
+                  <div className="px-5 pb-6 sm:px-6 sm:pb-6 text-zinc-700 text-sm sm:text-base leading-relaxed border-t border-zinc-200 pt-4 font-normal">
                     {faq.a}
                   </div>
                 )}
@@ -59,12 +59,12 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
         </div>
 
         {/* CTA Footer inside FAQ */}
-        <div className="mt-12 p-6 bg-zinc-950 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-12 p-6 bg-white border border-zinc-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <div className="text-zinc-100 font-black text-base uppercase italic">
+            <div className="text-zinc-900 font-black text-base uppercase italic">
               Have a specific question about your bike's chassis?
             </div>
-            <div className="text-xs text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
+            <div className="text-xs text-zinc-600 font-bold uppercase tracking-wider mt-0.5">
               Call Paul directly or schedule a lift appointment today.
             </div>
           </div>
@@ -72,7 +72,7 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
           <div className="flex items-center gap-3">
             <a
               href={`tel:${SHOP_INFO.phoneRaw}`}
-              className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-100 font-black px-5 py-3 text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+              className="bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-900 font-black px-5 py-3 text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors"
             >
               <Phone className="w-3.5 h-3.5 text-orange-600" />
               <span>Call ({SHOP_INFO.phone})</span>
