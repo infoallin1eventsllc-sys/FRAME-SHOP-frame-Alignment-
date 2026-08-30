@@ -1,3 +1,8 @@
+// Must come first: every const below reads process.env at module load, so the
+// .env file has to be in place before any of them are evaluated. Without this
+// the file is ignored entirely and only real shell variables are ever seen.
+import "dotenv/config";
+
 import express from "express";
 import path from "path";
 import fs from "fs";
