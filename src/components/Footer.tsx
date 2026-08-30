@@ -146,19 +146,32 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
         </div>
 
         {/* Studio credit */}
-        <div className="pt-8 mt-6 border-t border-zinc-900 flex flex-col items-center gap-3">
+        <div className="pt-8 mt-6 border-t border-zinc-900 flex flex-col items-center gap-3 text-center">
           <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
             This website was built by
           </span>
-          <a
-            href="https://meridianinterface.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Meridian Interface"
-            className="opacity-80 hover:opacity-100 transition-opacity"
-          >
-            <MeridianLogo size={150} />
-          </a>
+
+          <MeridianLogo size={150} />
+
+          <p className="max-w-md text-[11px] text-zinc-500 font-normal normal-case tracking-normal leading-relaxed">
+            Websites, applications, and always-on marketing systems for growing businesses.
+          </p>
+
+          <div className="flex items-center gap-3 flex-wrap justify-center text-[11px] font-bold">
+            <a
+              href="mailto:otis@meridianinterface.com"
+              className="text-zinc-400 hover:text-orange-500 transition-colors normal-case tracking-normal"
+            >
+              otis@meridianinterface.com
+            </a>
+            <span className="text-zinc-700" aria-hidden="true">•</span>
+            <a
+              href="tel:+12818829198"
+              className="text-zinc-400 hover:text-orange-500 transition-colors normal-case tracking-normal"
+            >
+              (281) 882-9198
+            </a>
+          </div>
         </div>
 
       </div>
