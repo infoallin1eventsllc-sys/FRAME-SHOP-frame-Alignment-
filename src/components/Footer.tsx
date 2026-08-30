@@ -148,7 +148,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
         {/* Studio credit */}
         <div className="pt-8 mt-6 border-t border-zinc-900 flex flex-col items-center gap-3 text-center">
           <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
-            This website was built by
+            This website built by
           </span>
 
           <a
