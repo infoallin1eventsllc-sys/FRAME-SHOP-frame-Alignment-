@@ -2,6 +2,7 @@ import React from 'react';
 import { SHOP_INFO } from '../data/shopData';
 import { Phone, MapPin, Instagram, Wrench, ShieldCheck, Lock } from 'lucide-react';
 import { Logo } from './Logo';
+import { MeridianLogo } from './MeridianLogo';
 
 interface FooterProps {
   onOpenBooking: () => void;
@@ -142,6 +143,21 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
             <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
             <span>Zero-Tolerance Motorcycle Frame &amp; Alignment Craftsmanship</span>
           </div>
+        </div>
+
+        {/* Studio credit */}
+        <div className="pt-6 mt-6 border-t border-zinc-900 flex items-center justify-center">
+          <a
+            href="https://meridianinterface.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-3 text-zinc-600 hover:text-zinc-300 transition-colors"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em]">
+              Site by
+            </span>
+            <MeridianLogo size={20} />
+          </a>
         </div>
 
       </div>
