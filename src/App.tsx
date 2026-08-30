@@ -9,7 +9,6 @@ import { WhyChooseUs } from './components/WhyChooseUs';
 import { OurWorkGallery } from './components/OurWorkGallery';
 import { ShopVideos } from './components/ShopVideos';
 import { AboutPaul } from './components/AboutPaul';
-import { Testimonials } from './components/Testimonials';
 import { FaqSection } from './components/FaqSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
@@ -91,9 +90,6 @@ export default function App() {
       <AboutPaul
         onOpenBooking={() => handleOpenBookingWithService()}
       />
-
-      {/* Testimonials */}
-      <Testimonials />
 
       {/* Frequently Asked Questions */}
       <FaqSection
