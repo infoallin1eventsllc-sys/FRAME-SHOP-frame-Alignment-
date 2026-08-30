@@ -27,6 +27,7 @@ import {
 import { Booking, Transaction, TransactionLineItem } from "../types";
 import { SHOP_INFO } from "../data/shopData";
 import { safeFetch } from "../utils/api";
+import { useEscapeToClose } from "../utils/useModalClose";
 import {
   connectBluetoothPrinter,
   sendPayloadToBluetoothPrinter,
@@ -147,6 +148,8 @@ export const TransactionPOSModal: React.FC<TransactionPOSModalProps> = ({
       }
     }
   }, [selectedBookingId, existingBookings]);
+
+  useEscapeToClose(isOpen, onClose);
 
   if (!isOpen) return null;
 

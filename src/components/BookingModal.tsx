@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SERVICES, SHOP_INFO } from '../data/shopData';
 import { X, Calendar, Clock, CheckCircle2, Phone, MapPin, Wrench, ShieldCheck, AlertCircle } from 'lucide-react';
 import { safeFetch } from '../utils/api';
+import { useEscapeToClose, useBackdropClose } from '../utils/useModalClose';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -42,6 +43,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  useEscapeToClose(isOpen, onClose);
+  const onBackdrop = useBackdropClose(onClose);
 
   if (!isOpen) return null;
 
@@ -119,7 +123,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const currentServiceObj = SERVICES.find(s => s.id === selectedService) || SERVICES[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+    <div onMouseDown={onBackdrop} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md animate-in fade-in duration-200 font-sans">
       <div className="bg-zinc-900 border border-zinc-800 rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[92vh] overflow-y-auto">
         
         <button

@@ -1129,7 +1129,19 @@ app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
 async function start() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        watch: {
+          /**
+           * The server writes its own state — bookings, transactions, videos,
+           * media — into data/ inside the project. Left watched, every booking
+           * a customer submitted made Vite reload the page, wiping the
+           * confirmation screen with their ticket number on it before they
+           * could read it.
+           */
+          ignored: ["**/data/**"],
+        },
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

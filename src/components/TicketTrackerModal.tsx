@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, X, CheckCircle2, Clock, Wrench, AlertCircle, Phone, FileText, Printer, ShieldCheck } from 'lucide-react';
 import { SHOP_INFO } from '../data/shopData';
 import { safeFetch } from '../utils/api';
+import { useEscapeToClose, useBackdropClose } from '../utils/useModalClose';
 
 interface TicketTrackerModalProps {
   isOpen: boolean;
@@ -38,6 +39,9 @@ export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, 
   const [searched, setSearched] = useState(false);
   const [foundBooking, setFoundBooking] = useState<BookingDetails | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEscapeToClose(isOpen, onClose);
+  const onBackdrop = useBackdropClose(onClose);
 
   if (!isOpen) return null;
 
@@ -94,7 +98,7 @@ export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+    <div onMouseDown={onBackdrop} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-md animate-in fade-in duration-200 font-sans">
       <div className="bg-white border border-zinc-200 rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto text-zinc-900">
         
         <button
