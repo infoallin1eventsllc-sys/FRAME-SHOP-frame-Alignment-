@@ -60,6 +60,10 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
+      {/* Paul's own shop footage. Sits directly under the hero so a customer
+          meets it without hunting; renders nothing until he adds a video. */}
+      <ShopVideos />
+
       {/* Services Section */}
       <Services
         onSelectServiceForBooking={(svcId) => handleOpenBookingWithService(svcId)}
@@ -82,9 +86,6 @@ export default function App() {
       <OurWorkGallery
         onOpenBooking={() => handleOpenBookingWithService()}
       />
-
-      {/* Paul's own shop footage — renders nothing until he adds a video */}
-      <ShopVideos />
 
       {/* About Paul Hurey */}
       <AboutPaul
