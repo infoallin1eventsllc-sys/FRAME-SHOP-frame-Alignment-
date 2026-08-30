@@ -23,6 +23,13 @@ const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production",
+  /**
+   * Helmet defaults to no-referrer, which breaks embedded video: YouTube can't
+   * see which site is asking, so it refuses to play with error 153. This is the
+   * modern browser default — the embedding origin is sent and nothing more, so
+   * the page path a visitor is on still never leaves the site.
+   */
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
 }));
 
 // Stripe webhook needs the raw request body — must be registered BEFORE express.json()
