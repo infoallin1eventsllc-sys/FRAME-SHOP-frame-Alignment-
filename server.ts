@@ -65,6 +65,14 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
   res.json({ received: true });
 });
 
+/**
+ * Photos are sent as data URLs and run to a few hundred KB, far past the 100kb
+ * default below. This has to be registered first: the general parser would
+ * otherwise reject them with 413 before the media route was ever reached.
+ */
+const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
+app.use("/api/media", express.json({ limit: MAX_MEDIA_BYTES }));
+
 app.use(express.json());
 
 const diagLimiter = rateLimit({
@@ -285,9 +293,6 @@ function sanitiseVideos(input: unknown): ShopVideoRecord[] | null {
  * ------------------------------------------------------------------------- */
 const MEDIA_FILE = path.join(DATA_DIR, "media.json");
 
-/** Data URLs of conditioned photos, so a few hundred KB each is normal. */
-const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
-
 interface SiteMedia {
   heroImage?: string;
   paulPhoto?: string;
@@ -315,7 +320,7 @@ app.get("/api/media", (_req, res) => {
 });
 
 // Owner only. Sent whole, the same way the portal holds it.
-app.put("/api/media", requireAdmin, express.json({ limit: MAX_MEDIA_BYTES }), (req, res) => {
+app.put("/api/media", requireAdmin, (req, res) => {
   const body = req.body;
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return res.status(400).json({ error: "Invalid media payload." });
