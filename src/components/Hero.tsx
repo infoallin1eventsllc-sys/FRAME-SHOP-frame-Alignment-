@@ -6,11 +6,11 @@ import { Logo } from './Logo';
 import { fetchSiteMedia, onMediaUpdated } from '../utils/siteMedia';
 
 /**
- * No stock photo ships behind the headline — the hero stands on the dark ground,
- * the accent glow and the type. Upload one from the Owner Photo Control tab and
- * it takes over; resetting there returns the hero to this bare state.
+ * Shown until Paul uploads his own shot from Owner Photo Control, which takes
+ * over. Removing his photo there returns the hero to this one.
  */
-export const DEFAULT_HERO_IMAGE = '';
+export const DEFAULT_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=85&w=2000';
 
 interface HeroProps {
   onOpenBooking: () => void;
