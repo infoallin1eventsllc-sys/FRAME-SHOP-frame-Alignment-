@@ -162,7 +162,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
           </a>
 
           <p className="max-w-md text-[11px] text-zinc-500 font-normal normal-case tracking-normal leading-relaxed">
-            Websites, applications, and always-on marketing systems for growing businesses.
+            Websites, applications, and marketing systems for growing businesses.
           </p>
 
           <div className="flex items-center gap-3 flex-wrap justify-center text-[11px] font-bold">
