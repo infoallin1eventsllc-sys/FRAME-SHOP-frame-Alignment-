@@ -89,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
           ? 'bg-zinc-950/95 backdrop-blur-md border-zinc-800 shadow-2xl py-3' 
           : 'bg-zinc-950/90 backdrop-blur-sm py-4 border-zinc-800/80'
       }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4 xl:gap-8">
           {/* Logo */}
           <button 
             onClick={() => handleLinkClick('hero')}
@@ -108,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
           </button>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-zinc-300">
+          <nav className="hidden xl:flex items-center gap-5 2xl:gap-8 text-xs font-bold uppercase tracking-widest text-zinc-300 whitespace-nowrap">
             <button 
               onClick={() => handleLinkClick('services')}
               className="hover:text-orange-500 transition-colors py-1 cursor-pointer"
@@ -181,10 +181,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
           </div>
 
           {/* Mobile Menu Toggle */}
-          <div className="flex sm:hidden items-center gap-2">
+          <div className="flex xl:hidden items-center gap-2">
             <button
               onClick={onOpenBooking}
-              className="bg-orange-600 text-white text-xs font-black px-3 py-1.5 rounded-none uppercase tracking-widest"
+              className="sm:hidden bg-orange-600 text-white text-xs font-black px-3 py-1.5 rounded-none uppercase tracking-widest"
             >
               Book
             </button>
@@ -201,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-zinc-950 border-b border-zinc-800 px-6 pt-4 pb-6 space-y-4 shadow-2xl">
+        <div className="xl:hidden bg-zinc-950 border-b border-zinc-800 px-6 pt-4 pb-6 space-y-4 shadow-2xl">
           <div className="text-xs text-zinc-400 pb-3 border-b border-zinc-800 space-y-2 font-bold uppercase tracking-wider">
             <div className="flex items-center gap-2 text-orange-500">
               <Phone className="w-3.5 h-3.5" />

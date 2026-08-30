@@ -5,6 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>The Frame Shop - Motorcycle Frame Alignment & Laser Chassis Diagnostics</title>
     
+    <!--
+      What Google prints under the title, and what Facebook, LinkedIn and a text
+      message show when someone shares the link. Without these a share is a bare
+      URL with no title, blurb or picture.
+      SITE_URL: replace localhost with the real domain once it is live — absolute
+      URLs are required here; a relative one is ignored by every scraper.
+    -->
+    <meta name="description" content="Laser-guided motorcycle frame straightening and 3D powertrain alignment in Spring, Texas. Head mechanic Paul Hurey restores chassis geometry on Harley and custom V-twin builds to factory specs or better." />
+    <link rel="canonical" href="http://localhost:3000/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="The Frame Shop" />
+    <meta property="og:title" content="The Frame Shop — Motorcycle Frame &amp; Powertrain Alignment" />
+    <meta property="og:description" content="Laser-guided frame straightening and 3D powertrain alignment for Harley and custom V-twin builds. Spring, Texas. By appointment — (832) 628-5226." />
+    <meta property="og:url" content="http://localhost:3000/" />
+    <meta property="og:image" content="http://localhost:3000/pwa-icon-512.png" />
+    <meta property="og:image:alt" content="The Frame Shop — motorcycle frame alignment, Spring, Texas" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="The Frame Shop — Motorcycle Frame &amp; Powertrain Alignment" />
+    <meta name="twitter:description" content="Laser-guided frame straightening and 3D powertrain alignment for Harley and custom V-twin builds. Spring, Texas." />
+    <meta name="twitter:image" content="http://localhost:3000/pwa-icon-512.png" />
+
+    <!--
+      Tells Google this is a real business with an address and opening hours, so
+      it can show the map card and hours rather than just a blue link.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "AutoRepair",
+        "name": "The Frame Shop",
+        "description": "Motorcycle frame straightening, 3D laser powertrain alignment and chassis diagnostics.",
+        "telephone": "+1-832-628-5226",
+        "url": "http://localhost:3000/",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "7531 Unit C Root Road",
+          "addressLocality": "Spring",
+          "addressRegion": "TX",
+          "postalCode": "77389",
+          "addressCountry": "US"
+        },
+        "openingHoursSpecification": [{
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Tuesday","Wednesday","Thursday","Friday","Saturday"],
+          "description": "By appointment only"
+        }],
+        "areaServed": "Spring, Texas and Greater Houston",
+        "founder": { "@type": "Person", "name": "Paul Hurey" }
+      }
+    </script>
+
     <!-- PWA / Standalone Web App Meta Tags -->
     <meta name="theme-color" content="#09090b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
