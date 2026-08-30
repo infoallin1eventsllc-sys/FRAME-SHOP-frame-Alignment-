@@ -93,7 +93,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const handlePayDeposit = async () => {
     setDepositLoading(true);
     try {
-      const res = await safeFetch('/api/stripe/checkout', {
+      const res = await safeFetch('/api/shopify/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -380,7 +380,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               >
                 {depositLoading ? 'Redirecting to Payment...' : '💳 Pay $75 Deposit Now'}
               </button>
-              <p className="text-[10px] text-zinc-600 mt-2 text-center">Secure checkout via Stripe. No account required.</p>
+              <p className="text-[10px] text-zinc-600 mt-2 text-center">Secure checkout. No account required.</p>
             </div>
 
             <div className="p-4 rounded-none bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 text-left max-w-lg mx-auto flex items-start gap-2">

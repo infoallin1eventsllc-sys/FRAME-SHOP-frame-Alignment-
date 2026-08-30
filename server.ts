@@ -10,16 +10,17 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import Stripe from "stripe";
+import {
+  shopifyEnabled,
+  createDraftOrder,
+  sendDraftOrderInvoice,
+  verifyWebhook,
+  bookingIdFromOrder,
+} from "./shopify";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
-const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY     || "";
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
-const APP_URL               = process.env.APP_URL               || `http://localhost:${PORT}`;
-
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production",
@@ -32,44 +33,41 @@ app.use(helmet({
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
 }));
 
-// Stripe webhook needs the raw request body — must be registered BEFORE express.json()
-app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(200).json({ received: true });
-  const sig = req.headers["stripe-signature"] as string;
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
-  } catch (err: any) {
-    return res.status(400).json({ error: `Webhook signature error: ${err.message}` });
+/**
+ * Shopify signs each webhook over the exact bytes it sent, so this needs the
+ * raw body and must be registered before express.json() parses it away.
+ */
+app.post("/api/shopify/webhook", express.raw({ type: "application/json" }), (req, res) => {
+  const hmac = String(req.headers["x-shopify-hmac-sha256"] || "");
+  if (!verifyWebhook(req.body as Buffer, hmac)) {
+    console.warn("[SHOPIFY WEBHOOK] rejected: bad signature");
+    return res.status(401).json({ error: "Invalid signature." });
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const bookingId = session.metadata?.bookingId;
-    if (bookingId) {
-      const bks = loadBookings();
-      const idx = bks.findIndex((b) => b.id === bookingId);
-      if (idx !== -1 && bks[idx].invoice) {
-        bks[idx].invoice!.paymentStatus = "deposit_paid";
-        saveBookings(bks);
-      }
-    }
-  }
-
-  if (event.type === "invoice.paid") {
-    const inv = event.data.object as Stripe.Invoice;
-    const bookingId = (inv.metadata as any)?.bookingId;
-    if (bookingId) {
-      const bks = loadBookings();
-      const idx = bks.findIndex((b) => b.id === bookingId);
-      if (idx !== -1 && bks[idx].invoice) {
-        bks[idx].invoice!.paymentStatus = "paid_in_full";
-        saveBookings(bks);
-      }
-    }
-  }
-
+  // Answer immediately — Shopify retries anything slower than 5 seconds.
   res.json({ received: true });
+
+  try {
+    const topic = String(req.headers["x-shopify-topic"] || "");
+    if (topic !== "orders/paid") return;
+
+    const order = JSON.parse((req.body as Buffer).toString("utf8"));
+    const bookingId = bookingIdFromOrder(order);
+    if (!bookingId) return;
+
+    const bks = loadBookings();
+    const idx = bks.findIndex((b) => b.id === bookingId);
+    if (idx === -1 || !bks[idx].invoice) return;
+
+    // A deposit leaves a balance; anything covering the total settles the job.
+    const paid = parseFloat(order.total_price ?? "0");
+    const due = Number(bks[idx].invoice!.totalAmount ?? 0);
+    bks[idx].invoice!.paymentStatus = due > 0 && paid + 0.01 < due ? "deposit_paid" : "paid_in_full";
+    saveBookings(bks);
+    console.log(`[SHOPIFY PAID]: ${order.name} → booking ${bookingId} (${bks[idx].invoice!.paymentStatus})`);
+  } catch (err) {
+    console.error("[SHOPIFY WEBHOOK ERROR]", err);
+  }
 });
 
 /**
@@ -1042,101 +1040,81 @@ Return a JSON response matching strictly this JSON format without markdown code 
   }
 });
 
-// -----------------------------------------------------------------------------
-// Stripe Payment Routes
-// -----------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------
+ * Shopify payments
+ * ------------------------------------------------------------------------- */
 
-// POST /api/stripe/checkout — Create Stripe Checkout session for booking deposit
-app.post("/api/stripe/checkout", bookingLimiter, async (req, res) => {
-  if (!stripe) {
-    return res.status(503).json({ error: "Online payment not yet configured. Please call the shop to pay your deposit." });
+/** Lets the client show a pay button only when payments are actually wired up. */
+app.get("/api/payments/config", (_req, res) => {
+  res.json({ provider: "shopify", enabled: shopifyEnabled() });
+});
+
+// POST /api/shopify/checkout — deposit link for a new booking (public)
+app.post("/api/shopify/checkout", bookingLimiter, async (req, res) => {
+  if (!shopifyEnabled()) {
+    return res.status(503).json({
+      error: "Online payment not yet configured. Please call the shop to pay your deposit.",
+    });
   }
   try {
     const { bookingId, amount, description, customerEmail } = req.body;
-    if (!amount || parseFloat(amount) <= 0) {
+    const value = parseFloat(String(amount));
+    if (!value || value <= 0) {
       return res.status(400).json({ error: "Invalid deposit amount." });
     }
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      customer_email: customerEmail || undefined,
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          product_data: { name: description || "Service Deposit – The Frame Shop" },
-          unit_amount: Math.round(parseFloat(amount) * 100),
-        },
-        quantity: 1,
-      }],
-      mode: "payment",
-      success_url: `${APP_URL}?deposit=success&booking=${bookingId || ""}`,
-      cancel_url: `${APP_URL}?deposit=cancelled`,
-      metadata: { bookingId: bookingId || "" },
+
+    const draft = await createDraftOrder({
+      lineItems: [{ title: description || "Service Deposit — The Frame Shop", price: value }],
+      email: customerEmail || undefined,
+      bookingId: bookingId || undefined,
+      note: "Booking deposit",
     });
-    res.json({ url: session.url, sessionId: session.id });
+
+    res.json({ url: draft.invoiceUrl, draftOrderId: draft.id, orderName: draft.name });
   } catch (err: any) {
-    console.error("Stripe checkout error:", err);
-    res.status(500).json({ error: "Failed to create payment session.", details: err.message });
+    console.error("Shopify checkout error:", err);
+    res.status(502).json({ error: "Failed to create payment link.", details: err.message });
   }
 });
 
-// POST /api/stripe/invoice/send — Create & email a Stripe invoice to a customer (owner only)
-app.post("/api/stripe/invoice/send", requireAdmin, async (req, res) => {
-  if (!stripe) {
-    return res.status(503).json({ error: "Stripe is not configured. Add STRIPE_SECRET_KEY to your environment." });
+// POST /api/shopify/invoice/send — email the finished job's invoice (owner only)
+app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
+  if (!shopifyEnabled()) {
+    return res.status(503).json({
+      error: "Shopify is not configured. Add SHOPIFY_STORE_DOMAIN and SHOPIFY_ADMIN_TOKEN to your environment.",
+    });
   }
   try {
-    const { customerName, customerEmail, items, dueDays, bookingId, ticketNumber } = req.body;
-    if (!customerEmail || !items?.length) {
+    const { customerName, customerEmail, items, bookingId, ticketNumber } = req.body;
+    if (!customerEmail || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Customer email and at least one line item are required." });
     }
 
-    // Find or create the Stripe customer record
-    const existing = await stripe.customers.list({ email: customerEmail, limit: 1 });
-    let customerId: string;
-    if (existing.data.length > 0) {
-      customerId = existing.data[0].id;
-      if (customerName) await stripe.customers.update(customerId, { name: customerName });
-    } else {
-      const cust = await stripe.customers.create({ name: customerName || customerEmail, email: customerEmail });
-      customerId = cust.id;
-    }
+    const lineItems = (items as Array<{ description: string; amount: number }>).map(item => ({
+      title: item.description || "Shop service",
+      price: parseFloat(String(item.amount)) || 0,
+    }));
 
-    // Create the invoice shell
-    const invoice = await stripe.invoices.create({
-      customer: customerId,
-      collection_method: "send_invoice",
-      days_until_due: dueDays || 30,
-      description: ticketNumber ? `The Frame Shop – Work Order ${ticketNumber}` : "The Frame Shop – Service Invoice",
-      metadata: { bookingId: bookingId || "" },
-      footer: "Thank you for trusting The Frame Shop with your motorcycle. Zero Tolerance. Pure Alignment.",
+    const draft = await createDraftOrder({
+      lineItems,
+      email: customerEmail,
+      customerName,
+      bookingId: bookingId || undefined,
+      ticketNumber: ticketNumber || undefined,
     });
+    await sendDraftOrderInvoice(draft.id);
 
-    // Add each line item
-    for (const item of items as Array<{ description: string; amount: number }>) {
-      await stripe.invoiceItems.create({
-        customer: customerId,
-        invoice: invoice.id,
-        amount: Math.round(parseFloat(String(item.amount)) * 100),
-        currency: "usd",
-        description: item.description,
-      });
-    }
-
-    // Finalize then send — customer receives an email with a Pay Now link
-    const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-    await stripe.invoices.sendInvoice(finalized.id);
-
-    console.log(`[STRIPE INVOICE SENT]: ${finalized.id} → ${customerEmail} | Ticket: ${ticketNumber || "N/A"}`);
+    console.log(`[SHOPIFY INVOICE SENT]: ${draft.name} → ${customerEmail} | Ticket: ${ticketNumber || "N/A"}`);
 
     res.json({
       success: true,
-      invoiceId: finalized.id,
-      invoiceUrl: finalized.hosted_invoice_url,
-      invoiceNumber: finalized.number,
+      invoiceId: String(draft.id),
+      invoiceUrl: draft.invoiceUrl,
+      invoiceNumber: draft.name,
     });
   } catch (err: any) {
-    console.error("Stripe invoice send error:", err);
-    res.status(500).json({ error: "Failed to send Stripe invoice.", details: err.message });
+    console.error("Shopify invoice send error:", err);
+    res.status(502).json({ error: "Failed to send the invoice.", details: err.message });
   }
 });
 
