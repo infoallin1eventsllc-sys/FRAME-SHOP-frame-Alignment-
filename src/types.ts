@@ -123,6 +123,8 @@ export interface Booking {
   invoice?: InternalInvoice;
   /** Paid before an invoice existed (the online deposit). Moves onto the invoice when one is made. */
   prepayments?: PaymentRecord[];
+  /** Each time the invoice PDF was emailed. */
+  invoiceEmails?: { to: string; at: string; balanceDue: number; id?: string }[];
   /** Present only if the customer ticked the offers box when booking. */
   marketingConsent?: { given: true; at: string; wording: string };
 }

@@ -24,6 +24,8 @@ import {
 import { writeJsonAtomic, readJsonWithRecovery } from "./storage";
 import { SERVICES as PUBLIC_SERVICE_PRICES, SHOP_INFO } from "./src/data/shopData";
 import { acceptInvoice, recomputePayments, balanceDue, shopifyCharge } from "./invoice";
+import { renderInvoicePdf } from "./invoicePdf";
+import { emailEnabled, sendEmail, looksLikeEmail } from "./mailer";
 import { logEvent, errorFields, alertsConfigured } from "./logger";
 
 const app = express();
@@ -484,6 +486,8 @@ interface Booking {
    * charged the full amount again. They move onto the invoice when it is made.
    */
   prepayments?: PaymentRecord[];
+  /** Every time the invoice PDF was emailed: to whom, when, and the balance it showed. */
+  invoiceEmails?: { to: string; at: string; balanceDue: number; id?: string }[];
   /**
    * Present only when the customer ticked the (unticked-by-default) box to hear
    * about offers. Keeps the exact words they agreed to and when, because that
@@ -878,6 +882,104 @@ app.delete("/api/bookings/:id/payments/:paymentId", requireAdmin, (req, res) => 
   } catch (err) {
     logEvent("error", "payment.delete.failed", errorFields(err));
     res.status(500).json({ error: "The payment could not be removed." });
+  }
+});
+
+/* ---------------------------------------------------------------------------
+ * The invoice as a PDF — to download, or to email to the customer.
+ *
+ * Without this the only way to get an invoice to a customer was Shopify. Now
+ * Paul can email the PDF directly (replies go to the shop's inbox), or
+ * download it to text, print or hand over himself.
+ * ------------------------------------------------------------------------- */
+function invoicePdfFor(b: Booking) {
+  return renderInvoicePdf(
+    b.invoice as any,
+    { name: SHOP_INFO.name, address: SHOP_INFO.address, phone: SHOP_INFO.phone, email: SHOP_INFO.email },
+    {
+      name: b.name,
+      phone: b.phone,
+      email: b.email,
+      ticketNumber: b.ticketNumber,
+      bike: [b.bikeYear, b.bikeMake, b.bikeModel].filter(Boolean).join(" "),
+    }
+  );
+}
+
+const pdfName = (b: Booking) => `Invoice-${b.invoice!.invoiceNumber.replace(/[^\w-]+/g, "")}-TheFrameShop.pdf`;
+
+app.get("/api/email/config", requireAdmin, (_req, res) => {
+  res.json({ enabled: emailEnabled(), replyTo: process.env.INVOICE_REPLY_TO || SHOP_INFO.email });
+});
+
+app.get("/api/bookings/:id/invoice.pdf", requireAdmin, async (req, res) => {
+  try {
+    const b = loadBookings().find((x) => x.id === req.params.id);
+    if (!b) return res.status(404).json({ error: "Booking ticket not found." });
+    if (!b.invoice || b.invoice.items.length === 0) {
+      return res.status(400).json({ error: "Save the invoice with at least one line first." });
+    }
+    const pdf = await invoicePdfFor(b);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${pdfName(b)}"`);
+    res.send(pdf);
+  } catch (err) {
+    logEvent("error", "invoice.pdf.failed", errorFields(err));
+    res.status(500).json({ error: "The PDF could not be made." });
+  }
+});
+
+app.post("/api/bookings/:id/invoice/email", requireAdmin, async (req, res) => {
+  if (!emailEnabled()) {
+    return res.status(503).json({
+      error: "Emailing invoices is not switched on yet. Download the PDF and send it yourself, or ask Otis to connect the email service.",
+    });
+  }
+  try {
+    const bookings = loadBookings();
+    const b = bookings.find((x) => x.id === req.params.id);
+    if (!b) return res.status(404).json({ error: "Booking ticket not found." });
+    if (!b.invoice || b.invoice.items.length === 0) {
+      return res.status(400).json({ error: "Save the invoice with at least one line before sending it." });
+    }
+    const to = (b.email || "").trim();
+    if (!looksLikeEmail(to)) {
+      return res.status(400).json({ error: "This booking has no valid email address on file." });
+    }
+
+    const owed = balanceDue(b.invoice as any);
+    const bike = [b.bikeYear, b.bikeMake, b.bikeModel].filter(Boolean).join(" ");
+    const pdf = await invoicePdfFor(b);
+    const first = b.name.split(" ")[0] || b.name;
+    const text = [
+      `Hi ${first},`,
+      "",
+      `Your invoice ${b.invoice.invoiceNumber} from ${SHOP_INFO.name} is attached${bike ? `, for your ${bike}` : ""}.`,
+      "",
+      owed > 0 ? `Balance due: $${owed.toFixed(2)}` : "This invoice is paid in full — thank you.",
+      "",
+      `Questions, or to arrange payment? Reply to this email or call ${SHOP_INFO.phone}.`,
+      "",
+      SHOP_INFO.name,
+      SHOP_INFO.address,
+    ].join("\n");
+
+    const { id } = await sendEmail({
+      to,
+      replyTo: process.env.INVOICE_REPLY_TO || SHOP_INFO.email,
+      subject: `Invoice ${b.invoice.invoiceNumber} from ${SHOP_INFO.name}`,
+      text,
+      attachment: { filename: pdfName(b), content: pdf },
+    });
+
+    (b.invoiceEmails ??= []).push({ to, at: new Date().toISOString(), balanceDue: owed, ...(id ? { id } : {}) });
+    saveBookings(bookings);
+    // The address is not logged: host logs are kept, and searchable.
+    logEvent("info", "invoice.emailed", { ticket: b.ticketNumber, balanceDue: owed });
+    res.json({ success: true, to, balanceDue: owed, booking: b });
+  } catch (err) {
+    logEvent("error", "invoice.email.failed", errorFields(err));
+    res.status(502).json({ error: "The invoice email did not send. Nothing was sent to the customer; try again, or download the PDF and send it yourself." });
   }
 });
 

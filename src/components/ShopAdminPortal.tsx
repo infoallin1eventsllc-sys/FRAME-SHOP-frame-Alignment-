@@ -709,6 +709,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [activeInvoiceBooking, setActiveInvoiceBooking] = useState<Booking | null>(null);
   const [invoiceFormState, setInvoiceFormState] = useState<InternalInvoice | null>(null);
   const [invoiceNotice, setInvoiceNotice] = useState<string>("");
+  const [pdfBusy, setPdfBusy] = useState<"" | "email" | "download">("");
+  const [emailConfig, setEmailConfig] = useState<{ enabled: boolean; replyTo: string } | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "check" | "card_in_person" | "other">("cash");
   const [paymentNote, setPaymentNote] = useState<string>("");
@@ -821,6 +823,10 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
     if (!isOpen || !isAuthenticated) return;
     fetchBookings();
     fetchRates().then((r) => r && setRates(r));
+    safeFetch("/api/email/config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => c && setEmailConfig(c))
+      .catch(() => {});
     // New requests show up without pressing Refresh.
     const timer = window.setInterval(fetchBookings, 60_000);
     return () => window.clearInterval(timer);
@@ -988,6 +994,66 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       fetchBookings();
     } catch {
       setInvoiceSendStatus({ loading: false, url: null, error: "Network error. Check your connection and try again." });
+    }
+  };
+
+  /**
+   * The customer's PDF. Saved first, because the PDF is made from the saved
+   * invoice — unsaved edits would otherwise be missing from it.
+   */
+  const handleDownloadPdf = async () => {
+    if (!activeInvoiceBooking || pdfBusy) return;
+    setPdfBusy("download");
+    try {
+      const saved = await saveInvoice();
+      if (!saved) return;
+      const res = await safeFetch(`/api/bookings/${saved.id}/invoice.pdf`);
+      if (!res.ok) {
+        setInvoiceNotice(await failure(res, "The PDF could not be made"));
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Invoice-${saved.invoice!.invoiceNumber}-TheFrameShop.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      setInvoiceNotice("PDF downloaded.");
+    } catch {
+      setInvoiceNotice("The PDF could not be downloaded: the website could not be reached.");
+    } finally {
+      setPdfBusy("");
+    }
+  };
+
+  const handleEmailPdf = async () => {
+    if (!activeInvoiceBooking || pdfBusy) return;
+    if (!activeInvoiceBooking.email) {
+      setInvoiceNotice("This booking has no email address on file.");
+      return;
+    }
+    if (!window.confirm(`Email this invoice as a PDF to ${activeInvoiceBooking.email}?`)) return;
+    setPdfBusy("email");
+    try {
+      const saved = await saveInvoice();
+      if (!saved) return;
+      const res = await safeFetch(`/api/bookings/${saved.id}/invoice/email`, { method: "POST" });
+      if (!res.ok) {
+        setInvoiceNotice(await failure(res, "The invoice email did not send"));
+        return;
+      }
+      const data = await res.json();
+      setActiveInvoiceBooking(data.booking);
+      setInvoiceNotice(
+        `PDF invoice emailed to ${data.to}${data.balanceDue > 0 ? ` — balance due $${Number(data.balanceDue).toFixed(2)}` : " — marked paid in full"}. Replies go to ${emailConfig?.replyTo || SHOP_INFO.email}.`
+      );
+      fetchBookings();
+    } catch {
+      setInvoiceNotice("The invoice email did not send: the website could not be reached.");
+    } finally {
+      setPdfBusy("");
     }
   };
 
@@ -2845,6 +2911,26 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                 </button>
                 <button
                   type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={!!pdfBusy}
+                  className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-60 text-zinc-200 border border-zinc-700 px-4 py-2 text-xs uppercase font-black flex items-center gap-1.5 cursor-pointer"
+                  title="Save, then download the customer's PDF copy"
+                >
+                  <Download className="w-4 h-4 text-orange-500" />
+                  <span>{pdfBusy === "download" ? "Making PDF…" : "Download PDF"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEmailPdf}
+                  disabled={!!pdfBusy}
+                  className="bg-sky-800 hover:bg-sky-700 disabled:opacity-60 text-white font-black px-4 py-2 text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                  title={`Save, then email the customer a PDF of this invoice. Replies go to ${emailConfig?.replyTo || SHOP_INFO.email}.`}
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>{pdfBusy === "email" ? "Sending…" : "Email PDF"}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleSaveInvoice}
                   className="bg-orange-600 hover:bg-orange-500 text-white font-black px-6 py-2 text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-lg"
                 >
@@ -2856,11 +2942,22 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   onClick={handleSendInvoice}
                   disabled={invoiceSendStatus.loading}
                   className="bg-violet-700 hover:bg-violet-600 disabled:bg-zinc-800 text-white font-black px-6 py-2 text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-lg transition-colors"
-                  title="Save invoice & email the customer a payment link"
+                  title="Save, then have Shopify email the customer a link to pay online"
                 >
                   <CreditCard className="w-4 h-4" />
-                  <span>{invoiceSendStatus.loading ? "Sending..." : "Email Invoice"}</span>
+                  <span>{invoiceSendStatus.loading ? "Sending..." : "Email Pay Link"}</span>
                 </button>
+              </div>
+
+              <div className="w-full text-[11px] text-zinc-400 space-y-0.5" data-testid="invoice-email-status">
+                {emailConfig && !emailConfig.enabled && (
+                  <div>Email PDF is not switched on yet — use Download PDF and send it yourself.</div>
+                )}
+                {(activeInvoiceBooking.invoiceEmails ?? []).slice(-1).map((e) => (
+                  <div key={e.at}>
+                    Last emailed {new Date(e.at).toLocaleString()} to {e.to} (balance then ${e.balanceDue.toFixed(2)}).
+                  </div>
+                ))}
               </div>
 
               {invoiceNotice && (

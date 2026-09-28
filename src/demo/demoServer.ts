@@ -306,6 +306,10 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
   if (p === '/api/payments/config') return json(200, { provider: 'shopify', enabled: false });
   if (p === '/api/shopify/checkout') return json(503, { error: 'Online payment is not connected in demo mode.' });
   if (p === '/api/shopify/invoice/send') return json(503, { error: 'Demo mode: Shopify is not connected, so no email was sent. On the live site this emails the customer a payment link.' });
+  if (p === '/api/email/config') return json(200, { enabled: false, replyTo: 'theframeshop13@gmail.com' });
+  if (seg[1] === 'bookings' && (seg[3] === 'invoice.pdf' || seg[3] === 'invoice')) {
+    return json(503, { error: 'Demo mode: PDFs are made by the server, so Download PDF and Email PDF only work on the live site.' });
+  }
   if (p === '/api/diagnostic') return json(503, { error: 'The AI diagnostic is not connected in demo mode.' });
 
   return json(404, { error: `No such endpoint: ${m} ${p}` });
