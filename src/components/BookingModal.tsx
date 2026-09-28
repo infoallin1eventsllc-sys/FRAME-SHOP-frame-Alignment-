@@ -1,7 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SERVICES, SHOP_INFO } from '../data/shopData';
 import { X, Calendar, Clock, CheckCircle2, Phone, MapPin, Wrench, ShieldCheck, AlertCircle } from 'lucide-react';
 import { safeFetch } from '../utils/api';
+
+const NOT_CONFIRMED =
+  `We couldn't confirm your booking — it may not have reached the shop. ` +
+  `Please try again, or call Paul on ${SHOP_INFO.phone}.`;
+
+/** crypto.randomUUID needs a secure context; fall back rather than fail. */
+function newBookingKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
 import { useEscapeToClose, useBackdropClose } from '../utils/useModalClose';
 
 interface BookingModalProps {
@@ -44,6 +54,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  /**
+   * One key per booking attempt, sent with every submit of it. The server
+   * treats a repeat of the same key as the same booking and hands back the one
+   * it already saved. That is what makes "try again" safe after a dropped
+   * connection: if the first request landed and only the reply was lost, the
+   * retry returns that booking instead of creating a second one.
+   */
+  const bookingKeyRef = useRef<string>('');
+  useEffect(() => {
+    if (isOpen) bookingKeyRef.current = newBookingKey();
+  }, [isOpen]);
+
+  /**
+   * isSubmitting disables the button, but only on the next render — two taps
+   * inside that gap both reach handleSubmit. A ref is read synchronously, so the
+   * second tap sees the first one in flight and stops.
+   */
+  const inFlightRef = useRef(false);
+
   useEscapeToClose(isOpen, onClose);
   const onBackdrop = useBackdropClose(onClose);
 
@@ -51,6 +80,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setIsSubmitting(true);
     setErrorMessage('');
 
@@ -70,26 +101,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           preferredTimeSlot,
           name,
           phone,
-          email
+          email,
+          idempotencyKey: bookingKeyRef.current,
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setBookingTicketNumber(data.booking?.ticketNumber || ('FS-' + Math.floor(100000 + Math.random() * 900000)));
-        setBookingId(data.booking?.id || '');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.booking?.ticketNumber) {
+        setBookingTicketNumber(data.booking.ticketNumber);
+        setBookingId(data.booking.id || '');
         setIsSubmitted(true);
+      } else if (res.ok) {
+        // Saved, but no ticket came back to show. Never invent one.
+        setErrorMessage(NOT_CONFIRMED);
       } else {
-        const errorData = await res.json();
-        setErrorMessage(errorData.error || 'Failed to submit appointment request.');
+        setErrorMessage(data.error || NOT_CONFIRMED);
       }
-    } catch (err) {
-      console.error('Booking submission error:', err);
-      // Fallback ticket for offline/preview
-      const fallbackTicket = 'FS-' + Math.floor(100000 + Math.random() * 900000);
-      setBookingTicketNumber(fallbackTicket);
-      setIsSubmitted(true);
+    } catch {
+      // This used to show a confirmed booking with a random, made-up ticket
+      // number — so a customer whose request never reached the shop believed
+      // they were booked, and turned up to a shop with no record of them.
+      // Say plainly that it did not go through. Trying again is safe: the same
+      // booking key means a request that did land is returned, not duplicated.
+      setErrorMessage(NOT_CONFIRMED);
     } finally {
+      inFlightRef.current = false;
       setIsSubmitting(false);
     }
   };

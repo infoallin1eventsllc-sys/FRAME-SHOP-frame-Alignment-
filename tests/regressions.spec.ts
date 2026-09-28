@@ -213,6 +213,71 @@ test.describe('Layout', () => {
   });
 });
 
+test.describe('When the network fails, say so', () => {
+  test('a booking that never reaches the shop is not shown as confirmed', async ({ page }) => {
+    // The form used to answer a failed request with a random, made-up ticket
+    // number and a confirmation screen. The customer believed they were booked.
+    await page.route('**/api/bookings', (route) =>
+      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue()
+    );
+    await page.goto('/');
+    await page.locator('#hero-book-now-btn').click();
+    const modal = page.locator('div.fixed').last();
+    for (const input of await modal.locator('input').all()) {
+      const type = await input.getAttribute('type');
+      const ph = (await input.getAttribute('placeholder')) || '';
+      if (type === 'tel') await input.fill('8325550100');
+      else if (type === 'email') await input.fill('offline@example.com');
+      else if (/Full Name/i.test(ph)) await input.fill('Offline Rider');
+    }
+    await modal.locator('button[type="submit"]').last().click();
+
+    await expect(modal.getByText(/couldn't confirm your booking/i)).toBeVisible();
+    await expect(modal.locator('text=/FS-\\d+/')).toHaveCount(0);
+  });
+
+  test('a diagnostic that cannot be reached gives no diagnosis', async ({ page }) => {
+    // It used to show a fixed "engine mount misalignment" result, personalised
+    // with the rider's bike, whatever symptoms they had described.
+    await page.route('**/api/diagnostic', (route) => route.abort('internetdisconnected'));
+    await page.goto('/');
+    await page.getByRole('button', { name: /AI Laser Tech Advisor/i }).click();
+    await page.locator('textarea').first().fill('Front brake grabs and pulls hard to the left.');
+    await page.getByRole('button', { name: /Analyze with AI Laser Tech/i }).click();
+
+    await expect(page.getByText(/couldn't reach the diagnostic tool/i)).toBeVisible();
+    await expect(page.getByText(/Engine Mount Misalignment/i)).toHaveCount(0);
+  });
+});
+
+test.describe('Operations', () => {
+  test('the health check reports on bookings and storage, not just "ok"', async ({ request }) => {
+    const res = await request.get('/api/health');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.checks).toEqual({ bookings: 'ok', storage: 'ok' });
+    // Public route: it must not advertise how the site is configured.
+    expect(JSON.stringify(body)).not.toMatch(/secret|token|protected|shopify|gemini/i);
+  });
+
+  test('booking and diagnostic requests are rate limited', async ({ request }) => {
+    const res = await request.post('/api/bookings', { data: {} }); // 400, but counted
+    expect(res.headers()['ratelimit-limit'] ?? res.headers()['ratelimit-policy']).toBeTruthy();
+  });
+
+  test('pages and scripts are sent compressed', async ({ request }) => {
+    const res = await request.get('/', { headers: { 'Accept-Encoding': 'gzip' } });
+    expect(res.headers()['content-encoding']).toBe('gzip');
+  });
+
+  test('the booking list can be paged, and says how many there are in all', async ({ request }) => {
+    const all = await (await request.get('/api/bookings')).json();
+    const page = await (await request.get('/api/bookings?limit=2&offset=0')).json();
+    expect(page.total).toBe(all.bookings.length);
+    expect(page.bookings.length).toBe(Math.min(2, all.bookings.length));
+  });
+});
+
 test.describe('Hero and header', () => {
   test('nothing in the hero sits under the fixed header, at any width', async ({ page }) => {
     // The hero had a hardcoded 112px top pad; the fixed header is 89-146px

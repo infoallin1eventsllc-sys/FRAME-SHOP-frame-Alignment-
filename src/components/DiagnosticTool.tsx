@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { ShieldAlert, CheckCircle2, ArrowRight, RefreshCw, Calendar, AlertTriangle, Gauge, Sparkles, Wrench, Cpu } from 'lucide-react';
 import { safeFetch } from '../utils/api';
+import { SHOP_INFO } from '../data/shopData';
+
+const DIAGNOSTIC_UNAVAILABLE =
+  `We couldn't reach the diagnostic tool just now. Call or text Paul on ${SHOP_INFO.phone} ` +
+  `and he'll talk the symptoms through with you.`;
 
 interface DiagnosticToolProps {
   onOpenBookingWithService: (serviceId: string) => void;
@@ -112,31 +117,20 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.diagnostic) {
-          setAiResult(data.diagnostic);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.diagnostic) {
+        setAiResult(data.diagnostic);
       } else {
-        const errData = await res.json();
-        setAiError(errData.error || 'Failed to generate AI diagnostic analysis.');
+        setAiError(data.error || DIAGNOSTIC_UNAVAILABLE);
       }
-    } catch (err) {
-      console.error('AI Diagnostic call error:', err);
-      // Fallback response for offline or preview mode
-      setAiResult({
-        diagnosisTitle: "3D Powertrain & Engine Mount Misalignment",
-        severityLevel: "Moderate Misalignment",
-        likelyCauses: [
-          "Motor mount isolator rubber bushing fatigue",
-          "Transmission top stabilizer tie-rod out of adjustment",
-          "Rear swingarm pivot axle non-parallel to front wheel"
-        ],
-        technicalExplanation: `Analysis for ${aiBikeModel}: High-speed instability and wobble often originate when motor torque forces the engine/transmission casing out of 3D parallel alignment with the frame backbone. A 3D laser scan on Paul's Frame Shooter alignment jig will measure exact millimeter offset.`,
-        recommendedServiceId: "powertrain-alignment",
-        recommendedServiceName: "3D Power Train Laser Alignment",
-        estimatedLaborHours: "1 - 2 Hours"
-      });
+    } catch {
+      // This used to show a fixed, made-up diagnosis — "engine mount
+      // misalignment, moderate severity", personalised with the rider's bike so
+      // it read as a real analysis — whatever symptoms they had typed. A rider
+      // describing a brake fault was told their engine mounts were out.
+      // Handling problems are a safety matter; never answer one with a guess
+      // dressed as a result. Say it did not work and point them to Paul.
+      setAiError(DIAGNOSTIC_UNAVAILABLE);
     } finally {
       setAiLoading(false);
     }

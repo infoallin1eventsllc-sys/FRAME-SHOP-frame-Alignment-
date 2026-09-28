@@ -39,6 +39,9 @@ async function adminApi(path: string, init: RequestInit = {}): Promise<any> {
   }
   const res = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/${API_VERSION}/${path}`, {
     ...init,
+    // Creating a deposit link happens while the customer waits on the booking
+    // screen. Shopify's Admin API normally answers in well under a second.
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     headers: {
       "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
       "Content-Type": "application/json",
@@ -132,4 +135,76 @@ export function bookingIdFromOrder(order: any): string | null {
   if (!Array.isArray(attrs)) return null;
   const hit = attrs.find((a: any) => a?.name === "bookingId");
   return hit?.value ? String(hit.value) : null;
+}
+
+/* ---------------------------------------------------------------------------
+ * Recording a payment against an invoice
+ *
+ * A job can be paid in more than one Shopify order: a deposit, then the
+ * balance. Each order fires its own orders/paid webhook. Two things follow.
+ *
+ * 1. Payments must ACCUMULATE. The first version judged each order on its own
+ *    — "$400 is less than the $500 total, so deposit paid" — so paying off the
+ *    balance left the job marked as still owing, forever.
+ *
+ * 2. Accumulating makes RETRIES dangerous. Shopify redelivers a webhook when it
+ *    is unsure the first delivery landed, and sums would count a retried order
+ *    twice. So every payment is recorded against its Shopify order id, and an
+ *    order already on the ledger is ignored. Replaying a webhook changes nothing.
+ * ------------------------------------------------------------------------- */
+
+export interface PaymentRecord {
+  /** Shopify's order id — the key that makes a replayed webhook a no-op. */
+  orderId: string;
+  /** The human order number, e.g. "#1042", for Paul's screen. */
+  orderName: string;
+  amount: number;
+  paidAt: string;
+}
+
+export type PaymentStatus = "unpaid" | "deposit_paid" | "paid_in_full";
+
+/** The slice of an invoice this needs; the full type lives in server.ts. */
+export interface PayableInvoice {
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  payments?: PaymentRecord[];
+  amountPaid?: number;
+}
+
+export interface PaymentResult {
+  /** False when this order was already recorded — a retried webhook. */
+  applied: boolean;
+  status: PaymentStatus;
+  amountPaid: number;
+}
+
+/**
+ * Record one paid order against an invoice. Mutates the invoice in place and
+ * says what happened. Safe to call any number of times with the same order.
+ */
+export function applyPayment(invoice: PayableInvoice, order: any): PaymentResult {
+  const payments = (invoice.payments ??= []);
+  const orderId = String(order?.id ?? "");
+  const amount = Math.round(parseFloat(order?.total_price ?? "0") * 100) / 100;
+
+  const already = orderId !== "" && payments.some((p) => p.orderId === orderId);
+  if (!already && orderId !== "" && amount > 0) {
+    payments.push({
+      orderId,
+      orderName: String(order?.name ?? orderId),
+      amount,
+      paidAt: String(order?.processed_at ?? order?.created_at ?? new Date().toISOString()),
+    });
+  }
+
+  // Sum in cents so a run of small payments cannot drift by a penny.
+  const paidCents = payments.reduce((sum, p) => sum + Math.round(p.amount * 100), 0);
+  const dueCents = Math.round(Number(invoice.totalAmount ?? 0) * 100);
+  const status: PaymentStatus =
+    paidCents <= 0 ? "unpaid" : dueCents > 0 && paidCents < dueCents ? "deposit_paid" : "paid_in_full";
+
+  invoice.amountPaid = paidCents / 100;
+  invoice.paymentStatus = status;
+  return { applied: !already && orderId !== "" && amount > 0, status, amountPaid: paidCents / 100 };
 }

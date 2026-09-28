@@ -5,18 +5,24 @@ import "dotenv/config";
 
 import express from "express";
 import path from "path";
+import crypto from "crypto";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import compression from "compression";
 import {
   shopifyEnabled,
   createDraftOrder,
   sendDraftOrderInvoice,
   verifyWebhook,
   bookingIdFromOrder,
+  applyPayment,
+  type PaymentRecord,
 } from "./shopify";
+import { writeJsonAtomic, readJsonWithRecovery } from "./storage";
+import { logEvent, errorFields, alertsConfigured } from "./logger";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -40,10 +46,31 @@ app.use(helmet({
  * Shopify signs each webhook over the exact bytes it sent, so this needs the
  * raw body and must be registered before express.json() parses it away.
  */
+/**
+ * Behind a host's load balancer — Railway, Render, Vercel — every request
+ * arrives from the balancer's address. Without this, req.ip is that one
+ * address for every visitor, so the per-IP rate limits below become limits on
+ * the whole site: the eleventh booking in any minute, from anyone, refused.
+ *
+ * It must be the number of proxy hops, never `true`. `true` believes whatever
+ * X-Forwarded-For a client sends, so anyone could claim a fresh address per
+ * request and walk straight past the limiter. One hop is right for the hosts
+ * above. Off outside production, where there is no proxy and a trusted header
+ * would be the client's own invention.
+ */
+const TRUST_PROXY_HOPS = process.env.TRUST_PROXY !== undefined
+  ? Number(process.env.TRUST_PROXY) || 0
+  : process.env.NODE_ENV === "production" ? 1 : 0;
+app.set("trust proxy", TRUST_PROXY_HOPS);
+
+// gzip every response big enough to benefit. The JavaScript bundle is 767 KB
+// raw and 223 KB compressed, and a customer on a phone downloads all of it.
+app.use(compression());
+
 app.post("/api/shopify/webhook", express.raw({ type: "application/json" }), (req, res) => {
   const hmac = String(req.headers["x-shopify-hmac-sha256"] || "");
   if (!verifyWebhook(req.body as Buffer, hmac)) {
-    console.warn("[SHOPIFY WEBHOOK] rejected: bad signature");
+    logEvent("warn", "shopify.webhook.bad_signature");
     return res.status(401).json({ error: "Invalid signature." });
   }
 
@@ -62,14 +89,19 @@ app.post("/api/shopify/webhook", express.raw({ type: "application/json" }), (req
     const idx = bks.findIndex((b) => b.id === bookingId);
     if (idx === -1 || !bks[idx].invoice) return;
 
-    // A deposit leaves a balance; anything covering the total settles the job.
-    const paid = parseFloat(order.total_price ?? "0");
-    const due = Number(bks[idx].invoice!.totalAmount ?? 0);
-    bks[idx].invoice!.paymentStatus = due > 0 && paid + 0.01 < due ? "deposit_paid" : "paid_in_full";
+    // Accumulates across orders (deposit, then balance) and ignores an order
+    // already recorded, so a retried webhook cannot count a payment twice.
+    const result = applyPayment(bks[idx].invoice!, order);
+    if (!result.applied) {
+      logEvent("info", "shopify.payment.retry_ignored", { order: order.name, bookingId });
+      return;
+    }
     saveBookings(bks);
-    console.log(`[SHOPIFY PAID]: ${order.name} → booking ${bookingId} (${bks[idx].invoice!.paymentStatus})`);
+    logEvent("info", "shopify.payment.recorded", { order: order.name, bookingId, amountPaid: result.amountPaid, status: result.status });
   } catch (err) {
-    console.error("[SHOPIFY WEBHOOK ERROR]", err);
+    // The 200 has already gone back to Shopify, so it will not retry: this log
+    // line (and the alert it raises) is the only record the payment was missed.
+    logEvent("error", "shopify.webhook.failed", errorFields(err));
   }
 });
 
@@ -83,9 +115,11 @@ app.use("/api/media", express.json({ limit: MAX_MEDIA_BYTES }));
 
 app.use(express.json());
 
+// Per visitor per minute. Overridable so a test run — every request from one
+// address — does not trip limits meant for many different customers.
 const diagLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: Number(process.env.DIAGNOSTIC_RATE_LIMIT) || 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many diagnostic requests. Please wait a moment and try again." },
@@ -93,7 +127,7 @@ const diagLimiter = rateLimit({
 
 const bookingLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: Number(process.env.BOOKING_RATE_LIMIT) || 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests. Please slow down." },
@@ -183,11 +217,14 @@ app.post(
           "cache-control": "public, max-age=31536000",
         },
         body: new Uint8Array(body),
+        // A 200 MB clip on a slow link takes a while; ten minutes is generous,
+        // and still stops a stalled upload holding the connection forever.
+        signal: AbortSignal.timeout(10 * 60_000),
       });
 
       if (!upstream.ok) {
         const detail = await upstream.text().catch(() => "");
-        console.error("[VIDEO UPLOAD FAILED]", upstream.status, detail);
+        logEvent("error", "video.upload.rejected", { status: upstream.status, detail });
         // Surface the one cause the owner can actually fix themselves.
         if (upstream.status === 404) {
           return res.status(502).json({
@@ -203,7 +240,7 @@ app.post(
         bytes: body.length,
       });
     } catch (err) {
-      console.error("[VIDEO UPLOAD ERROR]", err);
+      logEvent("error", "video.upload.failed", errorFields(err));
       res.status(500).json({ error: "Could not reach storage. Try again." });
     }
   }
@@ -222,7 +259,11 @@ app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
   try {
     const upstream = await fetch(
       `${SUPABASE_URL}/storage/v1/object/${SUPABASE_VIDEO_BUCKET}/${encodeURIComponent(objectName)}`,
-      { method: "DELETE", headers: { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
+        signal: AbortSignal.timeout(15_000),
+      }
     );
     // A file already gone is a success from the caller's point of view.
     if (!upstream.ok && upstream.status !== 404) {
@@ -230,7 +271,7 @@ app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) {
-    console.error("[VIDEO DELETE ERROR]", err);
+    logEvent("error", "video.delete.failed", errorFields(err));
     res.status(500).json({ error: "Could not reach storage." });
   }
 });
@@ -257,18 +298,19 @@ interface ShopVideoRecord {
 
 function readVideos(): ShopVideoRecord[] {
   try {
-    if (!fs.existsSync(VIDEOS_FILE)) return [];
-    const parsed = JSON.parse(fs.readFileSync(VIDEOS_FILE, "utf-8"));
-    return Array.isArray(parsed) ? parsed : [];
+    return readJsonWithRecovery<ShopVideoRecord[]>(VIDEOS_FILE, {
+      whenMissing: [],
+      valid: (v): v is ShopVideoRecord[] => Array.isArray(v),
+    }).data;
   } catch (err) {
-    console.error("[VIDEOS READ ERROR]", err);
+    // The public video list is not worth taking the page down over.
+    logEvent("error", "videos.unreadable", { message: (err as Error).message });
     return [];
   }
 }
 
 function writeVideos(list: ShopVideoRecord[]) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(VIDEOS_FILE, JSON.stringify(list, null, 2));
+  writeJsonAtomic(VIDEOS_FILE, list, { backups: 5 });
 }
 
 /** Keeps a malformed or oversized payload from becoming the published list. */
@@ -308,18 +350,18 @@ interface SiteMedia {
 
 function readMedia(): SiteMedia {
   try {
-    if (!fs.existsSync(MEDIA_FILE)) return {};
-    const parsed = JSON.parse(fs.readFileSync(MEDIA_FILE, "utf-8"));
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return readJsonWithRecovery<SiteMedia>(MEDIA_FILE, {
+      whenMissing: {},
+      valid: (v): v is SiteMedia => !!v && typeof v === "object" && !Array.isArray(v),
+    }).data;
   } catch (err) {
-    console.error("[MEDIA READ ERROR]", err);
+    logEvent("error", "media.unreadable", { message: (err as Error).message });
     return {};
   }
 }
 
 function writeMedia(media: SiteMedia) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(MEDIA_FILE, JSON.stringify(media));
+  writeJsonAtomic(MEDIA_FILE, media, { backups: 5 });
 }
 
 app.get("/api/media", (_req, res) => {
@@ -348,7 +390,7 @@ app.put("/api/media", requireAdmin, (req, res) => {
     writeMedia(clean);
     res.json({ ok: true });
   } catch (err) {
-    console.error("[MEDIA WRITE ERROR]", err);
+    logEvent("error", "media.write.failed", errorFields(err));
     res.status(500).json({ error: "Could not save the site photos." });
   }
 });
@@ -369,7 +411,7 @@ app.put("/api/videos", requireAdmin, (req, res) => {
     writeVideos(cleaned);
     res.json({ ok: true, count: cleaned.length });
   } catch (err) {
-    console.error("[VIDEOS WRITE ERROR]", err);
+    logEvent("error", "videos.write.failed", errorFields(err));
     res.status(500).json({ error: "Could not save the video list." });
   }
 });
@@ -397,12 +439,18 @@ interface InternalInvoice {
   taxAmount: number;
   totalAmount: number;
   paymentStatus: "unpaid" | "deposit_paid" | "paid_in_full";
+  /** Every Shopify order applied to this invoice, keyed by order id. */
+  payments?: PaymentRecord[];
+  /** Sum of payments. Optional so bookings saved before the ledger still load. */
+  amountPaid?: number;
   internalOwnerNotes?: string;
 }
 
 interface Booking {
   id: string;
   ticketNumber: string;
+  /** The key the form sent; a repeat of it returns this booking, not a new one. */
+  idempotencyKey?: string;
   serviceId: string;
   serviceTitle: string;
   bikeYear: string;
@@ -481,32 +529,31 @@ const INITIAL_BOOKINGS: Booking[] = [
   }
 ];
 
+// Twenty rolling snapshots: enough to step back past a burst of edits, and at a
+// few KB each, negligible on disk.
+const BOOKING_BACKUPS = 20;
+
 function loadBookings(): Booking[] {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(BOOKINGS_FILE)) {
-      fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(INITIAL_BOOKINGS, null, 2));
-      return INITIAL_BOOKINGS;
-    }
-    const data = fs.readFileSync(BOOKINGS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (err) {
-    console.error("Error reading bookings file:", err);
-    return INITIAL_BOOKINGS;
+  const { data, source } = readJsonWithRecovery<Booking[]>(BOOKINGS_FILE, {
+    whenMissing: INITIAL_BOOKINGS,
+    valid: (v): v is Booking[] => Array.isArray(v),
+  });
+  if (source === "missing") {
+    writeJsonAtomic(BOOKINGS_FILE, data);
+  } else if (source !== "file") {
+    // Recovered, not read. Say so loudly, and heal the live file.
+    logEvent("error", "bookings.recovered", { from: source, count: data.length });
+    writeJsonAtomic(BOOKINGS_FILE, data, { backups: BOOKING_BACKUPS });
   }
+  return data;
 }
 
+/**
+ * Throws on failure. It used to log and carry on, so a booking that was never
+ * written still came back to the customer as confirmed, with a ticket number.
+ */
 function saveBookings(bookings: Booking[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(bookings, null, 2));
-  } catch (err) {
-    console.error("Error saving bookings file:", err);
-  }
+  writeJsonAtomic(BOOKINGS_FILE, bookings, { backups: BOOKING_BACKUPS });
 }
 
 // -----------------------------------------------------------------------------
@@ -514,8 +561,44 @@ function saveBookings(bookings: Booking[]) {
 // -----------------------------------------------------------------------------
 
 // Health Check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+/**
+ * What an uptime monitor polls. It used to answer "ok" unconditionally, so a
+ * monitor would have called the site healthy with the bookings file unreadable
+ * or the disk full — the two failures that actually lose customers. Now it
+ * checks both, and answers 503 if either fails, which is what makes a monitor
+ * raise the alarm.
+ *
+ * Deliberately says nothing about configuration: this route is public, and
+ * "owner routes unprotected" is not something to announce to the internet.
+ */
+app.get("/api/health", (_req, res) => {
+  const checks: Record<string, "ok" | "fail"> = {};
+
+  try {
+    loadBookings();
+    checks.bookings = "ok";
+  } catch {
+    checks.bookings = "fail";
+  }
+
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const probe = path.join(DATA_DIR, `.health-${process.pid}`);
+    fs.writeFileSync(probe, "ok");
+    fs.rmSync(probe, { force: true });
+    checks.storage = "ok";
+  } catch {
+    checks.storage = "fail";
+  }
+
+  const healthy = Object.values(checks).every((c) => c === "ok");
+  if (!healthy) logEvent("error", "health.failed", checks);
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? "ok" : "degraded",
+    checks,
+    uptimeSeconds: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // POST /api/auth/pin - Validate owner PIN, return session token
@@ -558,14 +641,30 @@ app.get("/api/bookings/lookup", bookingLimiter, (req, res) => {
 });
 
 // GET /api/bookings - the owner's full list. Customers use /lookup above.
+/**
+ * The owner's booking list. Pass ?limit= (and ?offset=) to page through it;
+ * with neither, the whole list comes back, as it always has.
+ *
+ * Paging is opt-in rather than on by default because the owner portal filters
+ * and searches the list in the browser. A default page size would silently hide
+ * older bookings from Paul with nothing on screen to say so. `total` is always
+ * returned, so a client that pages knows how far it has to go.
+ */
+const MAX_PAGE = 500;
 app.get("/api/bookings", requireAdmin, (req, res) => {
-  const bookings = loadBookings();
-  const { status } = req.query;
+  const { status, limit, offset } = req.query;
+  let bookings = loadBookings();
   if (status && typeof status === "string" && status !== "all") {
-    const filtered = bookings.filter((b) => b.status === status);
-    return res.json({ bookings: filtered });
+    bookings = bookings.filter((b) => b.status === status);
   }
-  res.json({ bookings });
+  const total = bookings.length;
+
+  if (limit !== undefined) {
+    const size = Math.min(Math.max(parseInt(String(limit), 10) || 0, 1), MAX_PAGE);
+    const from = Math.max(parseInt(String(offset ?? "0"), 10) || 0, 0);
+    return res.json({ bookings: bookings.slice(from, from + size), total, limit: size, offset: from });
+  }
+  res.json({ bookings, total });
 });
 
 // POST /api/bookings - Create new appointment and dispatch notification digest
@@ -583,13 +682,36 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       name,
       phone,
       email,
+      idempotencyKey,
     } = req.body;
 
     if (!name || !phone || !bikeMake || !bikeModel) {
       return res.status(400).json({ error: "Missing required contact or motorcycle details." });
     }
 
-    const ticketNumber = "FS-" + Math.floor(100000 + Math.random() * 900000);
+    const key = typeof idempotencyKey === "string" && idempotencyKey.length <= 100 ? idempotencyKey : undefined;
+    const currentBookings = loadBookings();
+
+    // The same booking attempt, sent again — a double tap, or a retry after the
+    // reply was lost on a bad signal. Hand back the booking already saved
+    // rather than creating a second one with a second ticket number.
+    if (key) {
+      const existing = currentBookings.find((b) => b.idempotencyKey === key);
+      if (existing) {
+        logEvent("info", "booking.duplicate_ignored", { ticket: existing.ticketNumber });
+        return res.status(200).json({ success: true, message: "Appointment request received.", booking: existing, duplicate: true });
+      }
+    }
+
+    // Unique against every existing ticket. Six random digits give 900,000
+    // numbers, which by the birthday bound is roughly even odds of a clash
+    // within the first thousand bookings — and ticket lookup returns the first
+    // match, so a clash would show one customer another customer's booking.
+    const taken = new Set(currentBookings.map((b) => b.ticketNumber));
+    let ticketNumber = "";
+    do {
+      ticketNumber = "FS-" + crypto.randomInt(100000, 1000000);
+    } while (taken.has(ticketNumber));
     const newBooking: Booking = {
       id: "bk-" + Date.now(),
       ticketNumber,
@@ -606,30 +728,31 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       email,
       status: "pending",
       createdAt: new Date().toISOString(),
+      ...(key ? { idempotencyKey: key } : {}),
     };
 
-    const currentBookings = loadBookings();
     currentBookings.unshift(newBooking);
     saveBookings(currentBookings);
 
-    // Simulate Notification Dispatch (SMS/Email Digest to Shop Owner Paul Hurey)
-    console.log(`================================--------------------`);
-    console.log(`[SHOP NOTIFICATION DISPATCHED TO PAUL HUREY]:`);
-    console.log(`New Appointment Ticket #${newBooking.ticketNumber}`);
-    console.log(`Rider: ${newBooking.name} (${newBooking.phone})`);
-    console.log(`Bike: ${newBooking.bikeYear} ${newBooking.bikeMake} ${newBooking.bikeModel}`);
-    console.log(`Service: ${newBooking.serviceTitle}`);
-    console.log(`Requested Slot: ${newBooking.preferredDate} - ${newBooking.preferredTimeSlot}`);
-    console.log(`================================--------------------`);
+    // No customer contact details here: host logs are kept, and searchable.
+    logEvent("info", "booking.created", {
+      ticket: newBooking.ticketNumber,
+      service: newBooking.serviceTitle,
+      date: newBooking.preferredDate,
+    });
 
     res.status(201).json({
       success: true,
-      message: "Appointment request logged and notification sent to shop.",
+      message: "Appointment request received.",
       booking: newBooking,
-      notificationDispatched: true,
+      // Nothing is actually sent to Paul yet: no email or SMS service is wired
+      // up. This used to say true, and the message said "notification sent to
+      // shop", while the code only printed to the server console. Paul sees new
+      // bookings only when he opens the owner portal.
+      notificationDispatched: false,
     });
   } catch (err: any) {
-    console.error("Error saving booking:", err);
+    logEvent("error", "booking.save.failed", errorFields(err));
     res.status(500).json({ error: "Failed to save booking request." });
   }
 });
@@ -659,7 +782,7 @@ app.patch("/api/bookings/:id", requireAdmin, (req, res) => {
 
     res.json({ success: true, booking: bookings[index] });
   } catch (err) {
-    console.error("Error updating booking:", err);
+    logEvent("error", "booking.update.failed", errorFields(err));
     res.status(500).json({ error: "Failed to update booking." });
   }
 });
@@ -686,6 +809,35 @@ app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
   }
 });
 
+/**
+ * A hard daily ceiling on AI diagnostic calls, across every visitor.
+ *
+ * diagLimiter caps each IP at 5 a minute, which stops one person hammering the
+ * button — but a scraper rotating addresses walks straight past a per-IP limit
+ * and every call is billed to Paul's Gemini account. This bounds the worst day
+ * no matter where the traffic comes from.
+ *
+ * Counted in memory and reset at UTC midnight. A restart resets it too, which
+ * is acceptable for a bound on abuse; it is not an accounting system. The real
+ * backstop is a budget cap on the Gemini account itself — see the handoff doc.
+ */
+const DIAGNOSTIC_DAILY_CAP = Math.max(1, Number(process.env.DIAGNOSTIC_DAILY_CAP) || 200);
+const diagnosticUsage = { day: "", count: 0, warned: false };
+
+function claimDiagnosticCall(): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  if (diagnosticUsage.day !== today) Object.assign(diagnosticUsage, { day: today, count: 0, warned: false });
+  if (diagnosticUsage.count >= DIAGNOSTIC_DAILY_CAP) {
+    if (!diagnosticUsage.warned) {
+      diagnosticUsage.warned = true;
+      logEvent("error", "diagnostic.daily_cap_reached", { cap: DIAGNOSTIC_DAILY_CAP, day: today });
+    }
+    return false;
+  }
+  diagnosticUsage.count++;
+  return true;
+}
+
 app.post("/api/diagnostic", diagLimiter, async (req, res) => {
   try {
     const { motorcycleDetails, symptomDescription, speedRange } = req.body;
@@ -701,6 +853,16 @@ app.post("/api/diagnostic", diagLimiter, async (req, res) => {
       return res.status(503).json({
         error:
           "The diagnostic tool isn't switched on yet. Call or text Paul on " +
+          `${SHOP_INFO_PHONE} and he'll talk the symptoms through with you.`,
+      });
+    }
+
+    // Checked only once there is a key and a real question, so an empty or
+    // unkeyed request never uses up the day's allowance.
+    if (!claimDiagnosticCall()) {
+      return res.status(429).json({
+        error:
+          "The diagnostic tool is resting for today. Call or text Paul on " +
           `${SHOP_INFO_PHONE} and he'll talk the symptoms through with you.`,
       });
     }
@@ -734,6 +896,9 @@ Return a JSON response matching strictly this JSON format without markdown code 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
+      // A customer is watching a spinner. Past 30s, give up and let the catch
+      // tell them to call the shop, rather than leaving them waiting forever.
+      config: { abortSignal: AbortSignal.timeout(30_000) },
     });
 
     const responseText = response.text || "";
@@ -762,7 +927,7 @@ Return a JSON response matching strictly this JSON format without markdown code 
       });
     }
   } catch (err: any) {
-    console.error("Gemini Diagnostic Error:", err);
+    logEvent("error", "diagnostic.failed", errorFields(err));
     res.status(500).json({ error: "Failed to generate AI diagnostic analysis.", details: err?.message });
   }
 });
@@ -799,7 +964,7 @@ app.post("/api/shopify/checkout", bookingLimiter, async (req, res) => {
 
     res.json({ url: draft.invoiceUrl, draftOrderId: draft.id, orderName: draft.name });
   } catch (err: any) {
-    console.error("Shopify checkout error:", err);
+    logEvent("error", "shopify.checkout.failed", errorFields(err));
     res.status(502).json({ error: "Failed to create payment link.", details: err.message });
   }
 });
@@ -840,7 +1005,7 @@ app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
       invoiceNumber: draft.name,
     });
   } catch (err: any) {
-    console.error("Shopify invoice send error:", err);
+    logEvent("error", "shopify.invoice.failed", errorFields(err));
     res.status(502).json({ error: "Failed to send the invoice.", details: err.message });
   }
 });
@@ -854,6 +1019,24 @@ app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
  */
 app.use("/api", (req, res) => {
   res.status(404).json({ error: `No such endpoint: ${req.method} /api${req.path}` });
+});
+
+/**
+ * Anything a route throws and does not catch lands here. Express's default
+ * answers with an HTML stack trace; this logs it, raises the alert, and gives
+ * the caller a plain JSON error with no internals in it.
+ */
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logEvent("error", "request.unhandled", { method: req.method, path: req.path, ...errorFields(err) });
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Something went wrong on our side. Please try again, or call the shop." });
+});
+
+process.on("unhandledRejection", (reason) => logEvent("error", "process.unhandled_rejection", errorFields(reason)));
+process.on("uncaughtException", (err) => {
+  logEvent("error", "process.uncaught_exception", errorFields(err));
+  // State is unknown after this. Exit and let the host restart a clean process.
+  setTimeout(() => process.exit(1), 250);
 });
 
 // Start Express + Vite Server
@@ -878,8 +1061,28 @@ async function start() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+
+    // Vite puts a content hash in every file under assets/, so a changed file
+    // gets a new name. That makes them safe to cache for a year: a returning
+    // visitor downloads the bundle once, not on every visit.
+    app.use(
+      "/assets",
+      express.static(path.join(distPath, "assets"), { immutable: true, maxAge: "1y" })
+    );
+
+    // index.html is the one file whose name never changes, so it must always be
+    // revalidated — cache it and a deploy stays invisible until the cache expires.
+    const noCache = (res: express.Response) => res.setHeader("Cache-Control", "no-cache");
+    app.use(
+      express.static(distPath, {
+        maxAge: "1h",
+        setHeaders: (res, file) => {
+          if (file.endsWith(".html")) noCache(res);
+        },
+      })
+    );
+    app.get("*", (_req, res) => {
+      noCache(res);
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
