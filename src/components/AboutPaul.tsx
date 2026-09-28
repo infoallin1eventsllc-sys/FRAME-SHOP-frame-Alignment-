@@ -7,7 +7,8 @@ interface AboutPaulProps {
   onOpenBooking: () => void;
 }
 
-// Default permanent photo of Paul Heary in shop
+// Shown until Paul uploads his own photo. It is a stock picture, not of him,
+// so its description must not say it is.
 export const DEFAULT_PAUL_IMAGE = 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=1200&auto=format&fit=crop';
 
 export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
@@ -47,7 +48,7 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
                 <div className="relative w-full h-[520px] bg-zinc-900">
                   <img
                     src={currentPhoto}
-                    alt="Paul Heary - Owner & Head Mechanic"
+                    alt={currentPhoto === DEFAULT_PAUL_IMAGE ? 'A motorcycle in the workshop' : `${SHOP_INFO.owner} - Owner & Head Mechanic`}
                     referrerPolicy="no-referrer"
                     onError={() => setImgError(true)}
                     className="w-full h-full object-cover object-center filter contrast-110 transition-all duration-700 group-hover:scale-105"
@@ -55,7 +56,7 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
                 </div>
               ) : (
-                /* High-Detail Photograph Artwork: Head Mechanic Paul Heary with Gold 3D Frame Shooter Tool */
+                /* High-Detail Photograph Artwork: Head Mechanic with Gold 3D Frame Shooter Tool */
                 <div className="relative w-full h-[520px] bg-zinc-950 flex items-center justify-center overflow-hidden">
                   <svg
                     viewBox="0 0 600 650"
@@ -128,7 +129,7 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
                     <circle cx="390" cy="480" r="18" fill="#18181b" stroke="#52525b" strokeWidth="3" />
                     <line x1="330" y1="460" x2="440" y2="520" stroke="#09090b" strokeWidth="6" />
 
-                    {/* Paul Heary Portrait (Left Foreground Closeup) */}
+                    {/* Portrait (Left Foreground Closeup) */}
                     {/* Torso - Navy Blue Work Shirt */}
                     <path
                       d="M 0 650 L 0 310 Q 90 270 200 320 L 240 650 Z"

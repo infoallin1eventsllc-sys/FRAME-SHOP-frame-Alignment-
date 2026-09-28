@@ -121,7 +121,7 @@ test.describe('Owner portal', () => {
     await page.goto('/');
     const portal = await loginToPortal(page);
 
-    for (const tab of ['Work Orders', 'Owner Price Matrix', 'Owner Photo Control', 'How Do I']) {
+    for (const tab of ['Work Orders', 'Customer Messages', 'My Rates', 'Owner Photo Control', 'How Do I']) {
       await portal.locator(`button:has-text("${tab}")`).first().click();
       await expect(portal).not.toBeEmpty();
     }

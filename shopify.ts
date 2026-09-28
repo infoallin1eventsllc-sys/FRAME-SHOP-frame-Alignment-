@@ -12,6 +12,7 @@
  * orders/paid webhook, which is how the booking gets marked off.
  */
 import crypto from "crypto";
+import { recomputePayments } from "./invoice";
 
 export const SHOPIFY_STORE_DOMAIN   = (process.env.SHOPIFY_STORE_DOMAIN || "").replace(/^https?:\/\//, "").replace(/\/+$/, "");
 export const SHOPIFY_ADMIN_TOKEN    = process.env.SHOPIFY_ADMIN_TOKEN    || "";
@@ -77,6 +78,8 @@ export async function createDraftOrder(opts: {
   bookingId?: string;
   ticketNumber?: string;
   note?: string;
+  /** Money already received (a deposit, cash). Taken off the order's total. */
+  alreadyPaid?: number;
 }): Promise<DraftOrderResult> {
   const body = {
     draft_order: {
@@ -90,6 +93,17 @@ export async function createDraftOrder(opts: {
       ...(opts.email ? { email: opts.email } : {}),
       note: opts.note || (opts.ticketNumber ? `Work Order ${opts.ticketNumber}` : "The Frame Shop"),
       tags: "frame-shop",
+      ...(opts.alreadyPaid && opts.alreadyPaid > 0
+        ? {
+            applied_discount: {
+              title: "Already paid",
+              description: "Deposit and payments already received",
+              value_type: "fixed_amount",
+              value: opts.alreadyPaid.toFixed(2),
+              amount: opts.alreadyPaid.toFixed(2),
+            },
+          }
+        : {}),
       note_attributes: [
         ...(opts.bookingId ? [{ name: "bookingId", value: opts.bookingId }] : []),
         ...(opts.ticketNumber ? [{ name: "ticketNumber", value: opts.ticketNumber }] : []),
@@ -160,6 +174,9 @@ export interface PaymentRecord {
   orderName: string;
   amount: number;
   paidAt: string;
+  /** How it was paid. Absent on records from before this field existed: Shopify. */
+  method?: "shopify" | "cash" | "check" | "card_in_person" | "other";
+  note?: string;
 }
 
 export type PaymentStatus = "unpaid" | "deposit_paid" | "paid_in_full";
@@ -189,22 +206,18 @@ export function applyPayment(invoice: PayableInvoice, order: any): PaymentResult
   const amount = Math.round(parseFloat(order?.total_price ?? "0") * 100) / 100;
 
   const already = orderId !== "" && payments.some((p) => p.orderId === orderId);
-  if (!already && orderId !== "" && amount > 0) {
+  const applied = !already && orderId !== "" && amount > 0;
+  if (applied) {
     payments.push({
       orderId,
       orderName: String(order?.name ?? orderId),
       amount,
       paidAt: String(order?.processed_at ?? order?.created_at ?? new Date().toISOString()),
+      method: "shopify",
     });
   }
 
-  // Sum in cents so a run of small payments cannot drift by a penny.
-  const paidCents = payments.reduce((sum, p) => sum + Math.round(p.amount * 100), 0);
-  const dueCents = Math.round(Number(invoice.totalAmount ?? 0) * 100);
-  const status: PaymentStatus =
-    paidCents <= 0 ? "unpaid" : dueCents > 0 && paidCents < dueCents ? "deposit_paid" : "paid_in_full";
-
-  invoice.amountPaid = paidCents / 100;
-  invoice.paymentStatus = status;
-  return { applied: !already && orderId !== "" && amount > 0, status, amountPaid: paidCents / 100 };
+  // Summed in cents so a run of small payments cannot drift by a penny.
+  recomputePayments(invoice);
+  return { applied, status: invoice.paymentStatus, amountPaid: invoice.amountPaid ?? 0 };
 }

@@ -25,15 +25,7 @@ export interface WorkProject {
   description: string;
 }
 
-export interface Testimonial {
-  id: string;
-  riderName: string;
-  bikeInfo: string;
-  location: string;
-  rating: number;
-  quote: string;
-  verifiedService: string;
-}
+
 
 export interface BookingFormData {
   serviceId: string;
@@ -65,7 +57,8 @@ export interface QuizResult {
 export interface InvoiceLineItem {
   id: string;
   description: string;
-  category: "labor" | "parts" | "laser_scan" | "supplies" | "sublet";
+  /** "service" is a flat-priced job from the rate sheet; "labor" is billed by the hour. */
+  category: "service" | "labor" | "parts" | "laser_scan" | "supplies" | "sublet";
   quantity: number;
   rate: number;
   amount: number;
@@ -84,8 +77,30 @@ export interface InternalInvoice {
   taxRatePct: number;
   taxAmount: number;
   totalAmount: number;
+  /** Worked out by the server from `payments`. Not something to set by hand. */
   paymentStatus: "unpaid" | "deposit_paid" | "paid_in_full";
+  payments?: PaymentRecord[];
+  amountPaid?: number;
   internalOwnerNotes?: string;
+}
+
+export interface PaymentRecord {
+  orderId: string;
+  orderName: string;
+  amount: number;
+  paidAt: string;
+  method?: "shopify" | "cash" | "check" | "card_in_person" | "other";
+  note?: string;
+}
+
+/** Paul's own rates, saved on the server. */
+export interface ShopRates {
+  laborRate: number | null;
+  suppliesPct: number;
+  taxPct: number | null;
+  overheadPerHour: number | null;
+  lines: { id: string; name: string; price: number | null; unit: string; note: string }[];
+  confirmedAt?: string;
 }
 
 export interface Booking {
@@ -106,6 +121,8 @@ export interface Booking {
   createdAt: string;
   techNotes?: string;
   invoice?: InternalInvoice;
+  /** Paid before an invoice existed (the online deposit). Moves onto the invoice when one is made. */
+  prepayments?: PaymentRecord[];
   /** Present only if the customer ticked the offers box when booking. */
   marketingConsent?: { given: true; at: string; wording: string };
 }

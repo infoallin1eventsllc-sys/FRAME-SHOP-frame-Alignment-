@@ -22,6 +22,8 @@ import {
   type PaymentRecord,
 } from "./shopify";
 import { writeJsonAtomic, readJsonWithRecovery } from "./storage";
+import { SERVICES as PUBLIC_SERVICE_PRICES, SHOP_INFO } from "./src/data/shopData";
+import { acceptInvoice, recomputePayments, balanceDue, shopifyCharge } from "./invoice";
 import { logEvent, errorFields, alertsConfigured } from "./logger";
 
 const app = express();
@@ -87,11 +89,20 @@ app.post("/api/shopify/webhook", express.raw({ type: "application/json" }), (req
 
     const bks = loadBookings();
     const idx = bks.findIndex((b) => b.id === bookingId);
-    if (idx === -1 || !bks[idx].invoice) return;
+    if (idx === -1) {
+      // Paid for a booking that is no longer on file. Money came in, so this
+      // must reach a person rather than vanish.
+      logEvent("error", "shopify.payment.unmatched", { order: order.name, bookingId });
+      return;
+    }
+
+    // No invoice yet (a deposit): hold the payment on the booking. It moves
+    // onto the invoice when Paul creates one.
+    const target = bks[idx].invoice ?? { totalAmount: 0, paymentStatus: "unpaid" as const, payments: (bks[idx].prepayments ??= []) };
 
     // Accumulates across orders (deposit, then balance) and ignores an order
     // already recorded, so a retried webhook cannot count a payment twice.
-    const result = applyPayment(bks[idx].invoice!, order);
+    const result = applyPayment(target, order);
     if (!result.applied) {
       logEvent("info", "shopify.payment.retry_ignored", { order: order.name, bookingId });
       return;
@@ -467,6 +478,13 @@ interface Booking {
   techNotes?: string;
   invoice?: InternalInvoice;
   /**
+   * Payments received before an invoice exists — the online deposit, usually.
+   * They used to be dropped: the webhook ignored any booking without an
+   * invoice, so a paid deposit was never recorded and the final invoice
+   * charged the full amount again. They move onto the invoice when it is made.
+   */
+  prepayments?: PaymentRecord[];
+  /**
    * Present only when the customer ticked the (unticked-by-default) box to hear
    * about offers. Keeps the exact words they agreed to and when, because that
    * record is what consent actually rests on. Absent means no.
@@ -477,63 +495,10 @@ interface Booking {
 
 
 
-// Initial mock seed data if file doesn't exist
-const INITIAL_BOOKINGS: Booking[] = [
-  {
-    id: "bk-101",
-    ticketNumber: "FS-849201",
-    serviceId: "powertrain-alignment",
-    serviceTitle: "Power Train Alignment",
-    bikeYear: "2022",
-    bikeMake: "Harley-Davidson",
-    bikeModel: "Road Glide Special",
-    issueNotes: "High-speed rear wobble above 75mph in long freeway sweepers.",
-    preferredDate: "2026-08-04",
-    preferredTimeSlot: "Morning (9AM - 12PM)",
-    name: "Marcus Vance",
-    phone: "(832) 555-0199",
-    email: "marcus.vance@example.com",
-    status: "pending",
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    techNotes: "Initial check requested. Rider mentioned recent 128ci big bore kit install."
-  },
-  {
-    id: "bk-102",
-    ticketNumber: "FS-512039",
-    serviceId: "frame-repair",
-    serviceTitle: "Frame Repair & Straightening",
-    bikeYear: "2019",
-    bikeMake: "Harley-Davidson",
-    bikeModel: "Street Glide CVO",
-    issueNotes: "Pulls left after low-speed tip-over in driveway. Neck angle check required.",
-    preferredDate: "2026-08-05",
-    preferredTimeSlot: "Mid-Day (12PM - 3PM)",
-    name: "Derrick Miller",
-    phone: "(281) 555-8420",
-    email: "dmiller.riding@example.com",
-    status: "confirmed",
-    createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
-    techNotes: "Confirmed with Derrick. Scheduled for lift 1 laser scan."
-  },
-  {
-    id: "bk-103",
-    ticketNumber: "FS-993102",
-    serviceId: "suspension-tuning",
-    serviceTitle: "Suspension Tuning",
-    bikeYear: "2021",
-    bikeMake: "Indian",
-    bikeModel: "Challenger Dark Horse",
-    issueNotes: "Front fork stiction during hard cornering. Requesting Öhlins cartridge setup.",
-    preferredDate: "2026-08-02",
-    preferredTimeSlot: "Morning (9AM - 12PM)",
-    name: "Colton Hayes",
-    phone: "(713) 555-3910",
-    email: "chayes@example.com",
-    status: "completed",
-    createdAt: new Date(Date.now() - 3600000 * 72).toISOString(),
-    techNotes: "Triple trees re-aligned on laser jig. Anti-stiction torque specs applied. Rider tested and approved."
-  }
-];
+// A new install starts with no bookings. It used to start with three invented
+// customers — names, phone numbers, bikes — which would have been the first
+// thing Paul saw in his portal on the live site.
+const INITIAL_BOOKINGS: Booking[] = [];
 
 // Twenty rolling snapshots: enough to step back past a burst of edits, and at a
 // few KB each, negligible on disk.
@@ -791,15 +756,30 @@ app.patch("/api/bookings/:id", requireAdmin, (req, res) => {
       return res.status(404).json({ error: "Booking ticket not found." });
     }
 
-    if (status) bookings[index].status = status;
+    if (status !== undefined) {
+      if (!["pending", "confirmed", "in_shop", "completed", "cancelled"].includes(status)) {
+        return res.status(400).json({ error: "Unknown status." });
+      }
+      bookings[index].status = status;
+    }
     if (techNotes !== undefined) bookings[index].techNotes = techNotes;
     if (preferredDate) bookings[index].preferredDate = preferredDate;
     if (preferredTimeSlot) bookings[index].preferredTimeSlot = preferredTimeSlot;
-    if (invoice !== undefined) bookings[index].invoice = invoice;
+    if (invoice !== undefined) {
+      if (!invoice || typeof invoice !== "object") {
+        return res.status(400).json({ error: "Invalid invoice." });
+      }
+      // Totals are recomputed here and the payment ledger is kept from what is
+      // on file — never taken from the browser, which may be holding a copy
+      // from before a payment arrived.
+      const b = bookings[index];
+      b.invoice = acceptInvoice(invoice, [...(b.invoice?.payments ?? []), ...(b.prepayments ?? [])]) as InternalInvoice;
+      delete b.prepayments;
+    }
 
     saveBookings(bookings);
 
-    console.log(`[BOOKING UPDATED]: Ticket #${bookings[index].ticketNumber} -> Status: ${bookings[index].status}`);
+    logEvent("info", "booking.updated", { ticket: bookings[index].ticketNumber, status: bookings[index].status });
 
     res.json({ success: true, booking: bookings[index] });
   } catch (err) {
@@ -827,6 +807,185 @@ app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
     res.json({ success: true, message: "Booking removed." });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete booking." });
+  }
+});
+
+/* ---------------------------------------------------------------------------
+ * Payments taken in the shop — cash, check, card on the shop's own reader.
+ *
+ * Payment status used to be a dropdown Paul could set to anything. It is now
+ * worked out from the payments on record, so taking money in person needs a
+ * way onto that record. Online (Shopify) payments arrive by webhook and cannot
+ * be removed here; a payment entered by hand can, to correct a typing mistake.
+ * ------------------------------------------------------------------------- */
+const MANUAL_METHODS = ["cash", "check", "card_in_person", "other"] as const;
+
+app.post("/api/bookings/:id/payments", requireAdmin, (req, res) => {
+  try {
+    const amount = Math.round(parseFloat(String(req.body?.amount)) * 100) / 100;
+    const method = req.body?.method;
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
+      return res.status(400).json({ error: "Enter the amount received." });
+    }
+    if (!MANUAL_METHODS.includes(method)) {
+      return res.status(400).json({ error: "Choose how it was paid." });
+    }
+
+    const bookings = loadBookings();
+    const b = bookings.find((x) => x.id === req.params.id);
+    if (!b) return res.status(404).json({ error: "Booking ticket not found." });
+
+    const record: PaymentRecord = {
+      orderId: `manual-${crypto.randomUUID()}`,
+      orderName: method === "check" ? "Check" : method === "cash" ? "Cash" : method === "card_in_person" ? "Card (in shop)" : "Other",
+      amount,
+      paidAt: new Date().toISOString(),
+      method,
+      ...(typeof req.body?.note === "string" && req.body.note.trim() ? { note: req.body.note.trim().slice(0, 200) } : {}),
+    };
+
+    if (b.invoice) {
+      (b.invoice.payments ??= []).push(record);
+      recomputePayments(b.invoice);
+    } else {
+      (b.prepayments ??= []).push(record);
+    }
+    saveBookings(bookings);
+    logEvent("info", "payment.recorded", { ticket: b.ticketNumber, method, amount });
+    res.status(201).json({ success: true, booking: b });
+  } catch (err) {
+    logEvent("error", "payment.record.failed", errorFields(err));
+    res.status(500).json({ error: "The payment could not be saved." });
+  }
+});
+
+app.delete("/api/bookings/:id/payments/:paymentId", requireAdmin, (req, res) => {
+  try {
+    const bookings = loadBookings();
+    const b = bookings.find((x) => x.id === req.params.id);
+    if (!b) return res.status(404).json({ error: "Booking ticket not found." });
+
+    const list = b.invoice ? (b.invoice.payments ??= []) : (b.prepayments ??= []);
+    const i = list.findIndex((p) => p.orderId === req.params.paymentId);
+    if (i === -1) return res.status(404).json({ error: "Payment not found." });
+    if (!list[i].orderId.startsWith("manual-")) {
+      return res.status(409).json({ error: "Online payments are recorded by Shopify. Refund them in Shopify instead." });
+    }
+    list.splice(i, 1);
+    if (b.invoice) recomputePayments(b.invoice);
+    saveBookings(bookings);
+    res.json({ success: true, booking: b });
+  } catch (err) {
+    logEvent("error", "payment.delete.failed", errorFields(err));
+    res.status(500).json({ error: "The payment could not be removed." });
+  }
+});
+
+/* ---------------------------------------------------------------------------
+ * Paul's rate sheet.
+ *
+ * The portal's "Price Matrix" was a page of invented numbers — hourly rates,
+ * overheads, margins, engine packages — presented as his. This is his own:
+ * nothing in it until he saves it, except the starting prices the website
+ * already advertises, offered as a first draft for him to confirm.
+ * ------------------------------------------------------------------------- */
+const RATES_FILE = path.join(DATA_DIR, "rates.json");
+
+interface RateLine {
+  id: string;
+  name: string;
+  price: number | null;
+  unit: string;
+  note: string;
+}
+interface ShopRates {
+  laborRate: number | null;
+  suppliesPct: number;
+  taxPct: number | null;
+  overheadPerHour: number | null;
+  lines: RateLine[];
+  /** Set the first time Paul saves. Until then the sheet is a draft. */
+  confirmedAt?: string;
+}
+
+/** The only prices on record: the "starting at" figures the site shows customers. */
+function draftRatesFromWebsite(): ShopRates {
+  const lines: RateLine[] = PUBLIC_SERVICE_PRICES.map((svc) => {
+    const n = svc.startingPrice.match(/\$\s*([\d,]+(?:\.\d+)?)/);
+    return {
+      id: svc.id,
+      name: svc.title,
+      price: n ? parseFloat(n[1].replace(/,/g, "")) : null,
+      unit: /hr|hour/i.test(svc.startingPrice) ? "per hour" : /wheel/i.test(svc.startingPrice) ? "per wheel" : /from/i.test(svc.startingPrice) ? "starting at" : "flat",
+      note: `Website lists: ${svc.startingPrice}`,
+    };
+  });
+  const general = lines.find((l) => l.id === "general-repair");
+  return { laborRate: general?.price ?? null, suppliesPct: 0, taxPct: null, overheadPerHour: null, lines };
+}
+
+function loadRates(): ShopRates {
+  return readJsonWithRecovery<ShopRates>(RATES_FILE, {
+    whenMissing: draftRatesFromWebsite(),
+    valid: (v): v is ShopRates => !!v && typeof v === "object" && Array.isArray((v as ShopRates).lines),
+  }).data;
+}
+
+const moneyOrNull = (v: unknown, max = 1_000_000) => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = parseFloat(String(v));
+  return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 100) / 100 : undefined;
+};
+
+app.get("/api/rates", requireAdmin, (_req, res) => {
+  try {
+    res.json(loadRates());
+  } catch (err) {
+    logEvent("error", "rates.read.failed", errorFields(err));
+    res.status(500).json({ error: "Could not read the rate sheet." });
+  }
+});
+
+app.put("/api/rates", requireAdmin, (req, res) => {
+  const body = req.body || {};
+  const laborRate = moneyOrNull(body.laborRate);
+  const taxPct = moneyOrNull(body.taxPct, 100);
+  const overheadPerHour = moneyOrNull(body.overheadPerHour);
+  const suppliesPct = moneyOrNull(body.suppliesPct, 100);
+  if (laborRate === undefined || taxPct === undefined || overheadPerHour === undefined || suppliesPct === undefined) {
+    return res.status(400).json({ error: "Rates must be numbers of zero or more (percentages up to 100)." });
+  }
+  if (!Array.isArray(body.lines) || body.lines.length > 200) {
+    return res.status(400).json({ error: "Invalid rate list." });
+  }
+  const lines: RateLine[] = [];
+  for (const [i, raw] of body.lines.entries()) {
+    const name = clean(raw?.name, 120);
+    const price = moneyOrNull(raw?.price);
+    if (!name) return res.status(400).json({ error: `Line ${i + 1} needs a name.` });
+    if (price === undefined) return res.status(400).json({ error: `"${name}" has an invalid price.` });
+    lines.push({
+      id: clean(raw?.id, 60) || `rate-${Date.now()}-${i}`,
+      name,
+      price,
+      unit: clean(raw?.unit, 40) || "flat",
+      note: clean(raw?.note, 300),
+    });
+  }
+  const rates: ShopRates = {
+    laborRate,
+    suppliesPct: suppliesPct ?? 0,
+    taxPct,
+    overheadPerHour,
+    lines,
+    confirmedAt: new Date().toISOString(),
+  };
+  try {
+    writeJsonAtomic(RATES_FILE, rates, { backups: 10 });
+    res.json(rates);
+  } catch (err) {
+    logEvent("error", "rates.save.failed", errorFields(err));
+    res.status(500).json({ error: "The rate sheet could not be saved." });
   }
 });
 
@@ -1003,7 +1162,7 @@ app.post("/api/diagnostic", diagLimiter, async (req, res) => {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `You are Paul Heary, Master Chassis & Frame Alignment Specialist at The Frame Shop in Spring, Texas.
+    const prompt = `You are ${SHOP_INFO.owner}, Master Chassis & Frame Alignment Specialist at The Frame Shop in Spring, Texas.
 A rider is asking for a diagnostic assessment of their motorcycle's handling issues.
 
 Rider's Motorcycle: ${motorcycleDetails || "V-Twin / Bagger / Cruiser"}
@@ -1076,6 +1235,9 @@ app.get("/api/payments/config", (_req, res) => {
 });
 
 // POST /api/shopify/checkout — deposit link for a new booking (public)
+/** The online inspection deposit, in dollars. Matches the booking form and the refunds page. */
+const DEPOSIT_AMOUNT = 75;
+
 app.post("/api/shopify/checkout", bookingLimiter, async (req, res) => {
   if (!shopifyEnabled()) {
     return res.status(503).json({
@@ -1083,16 +1245,18 @@ app.post("/api/shopify/checkout", bookingLimiter, async (req, res) => {
     });
   }
   try {
-    const { bookingId, amount, description, customerEmail } = req.body;
-    const value = parseFloat(String(amount));
-    if (!value || value <= 0) {
-      return res.status(400).json({ error: "Invalid deposit amount." });
+    // The amount and wording are set here, not by the browser. This route is
+    // public; it used to take both from the request.
+    const booking = loadBookings().find((b) => b.id === String(req.body?.bookingId || ""));
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found. Please call the shop to pay your deposit." });
     }
 
     const draft = await createDraftOrder({
-      lineItems: [{ title: description || "Service Deposit — The Frame Shop", price: value }],
-      email: customerEmail || undefined,
-      bookingId: bookingId || undefined,
+      lineItems: [{ title: `Inspection deposit – ${booking.serviceTitle} (${booking.ticketNumber})`, price: DEPOSIT_AMOUNT }],
+      email: booking.email || undefined,
+      bookingId: booking.id,
+      ticketNumber: booking.ticketNumber,
       note: "Booking deposit",
     });
 
@@ -1111,29 +1275,39 @@ app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
     });
   }
   try {
-    const { customerName, customerEmail, items, bookingId, ticketNumber } = req.body;
-    if (!customerEmail || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "Customer email and at least one line item are required." });
+    // Built from the invoice as saved, not from what the browser sends, so
+    // the customer is charged exactly what the invoice says.
+    const booking = loadBookings().find((b) => b.id === String(req.body?.bookingId || ""));
+    if (!booking) return res.status(404).json({ error: "Booking not found." });
+    const inv = booking.invoice;
+    if (!inv || inv.items.length === 0) {
+      return res.status(400).json({ error: "Save the invoice with at least one line before sending it." });
+    }
+    if (!booking.email) {
+      return res.status(400).json({ error: "This booking has no email address on file." });
+    }
+    const owed = balanceDue(inv);
+    if (owed <= 0) {
+      return res.status(400).json({ error: "Nothing is owed on this invoice — it is already paid in full." });
     }
 
-    const lineItems = (items as Array<{ description: string; amount: number }>).map(item => ({
-      title: item.description || "Shop service",
-      price: parseFloat(String(item.amount)) || 0,
-    }));
-
+    const { lines, alreadyPaid } = shopifyCharge(inv as any);
     const draft = await createDraftOrder({
-      lineItems,
-      email: customerEmail,
-      customerName,
-      bookingId: bookingId || undefined,
-      ticketNumber: ticketNumber || undefined,
+      lineItems: lines,
+      email: booking.email,
+      customerName: booking.name,
+      bookingId: booking.id,
+      ticketNumber: booking.ticketNumber,
+      alreadyPaid,
     });
     await sendDraftOrderInvoice(draft.id);
+    const ticketNumber = booking.ticketNumber;
 
-    console.log(`[SHOPIFY INVOICE SENT]: ${draft.name} → ${customerEmail} | Ticket: ${ticketNumber || "N/A"}`);
+    logEvent("info", "shopify.invoice.sent", { order: draft.name, ticket: ticketNumber, amount: owed });
 
     res.json({
       success: true,
+      amountCharged: owed,
       invoiceId: String(draft.id),
       invoiceUrl: draft.invoiceUrl,
       invoiceNumber: draft.name,

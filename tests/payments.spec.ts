@@ -82,7 +82,8 @@ test.describe('orders/paid webhook, end to end', () => {
     const { booking: { id } } = await created.json();
 
     await request.patch(`/api/bookings/${id}`, {
-      data: { invoice: { invoiceNumber: 'T-1', totalAmount: 500, paymentStatus: 'unpaid', items: [] } },
+      // The server works the total out from the lines; a $500 job.
+      data: { invoice: { invoiceNumber: 'T-1', items: [{ description: 'Frame job', category: 'service', quantity: 1, rate: 500 }] } },
     });
 
     const readInvoice = async () =>

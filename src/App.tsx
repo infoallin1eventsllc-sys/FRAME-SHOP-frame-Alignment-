@@ -14,6 +14,7 @@ import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { BookingModal } from './components/BookingModal';
 import { ShopAdminPortal } from './components/ShopAdminPortal';
+import { PortalErrorBoundary } from './components/PortalErrorBoundary';
 import { TicketTrackerModal } from './components/TicketTrackerModal';
 
 export default function App() {
@@ -115,10 +116,12 @@ export default function App() {
       />
 
       {/* Shop Management & Appointment Command Center for Paul */}
-      <ShopAdminPortal
-        isOpen={isShopAdminOpen}
-        onClose={() => setIsShopAdminOpen(false)}
-      />
+      <PortalErrorBoundary onClose={() => setIsShopAdminOpen(false)}>
+        <ShopAdminPortal
+          isOpen={isShopAdminOpen}
+          onClose={() => setIsShopAdminOpen(false)}
+        />
+      </PortalErrorBoundary>
 
       {/* Customer Ticket & Work Order Tracker Modal */}
       <TicketTrackerModal

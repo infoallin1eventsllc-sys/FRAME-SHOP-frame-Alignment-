@@ -1,4 +1,4 @@
-import { ServiceItem, WorkProject, Testimonial } from '../types';
+import { ServiceItem, WorkProject } from '../types';
 
 export const SHOP_INFO = {
   name: "The Frame Shop",
@@ -237,36 +237,6 @@ export const WORK_PROJECTS: WorkProject[] = [
       keyFix: "Secured on Paul's 360° hydraulic frame jig turntable; used dual pulling towers, frame clamps, and laser alignment arms to pull neck backbone straight."
     },
     description: "Heavy-duty Milwaukee-Eight 117 motorcycle mounted on Paul Hurey's custom 360-degree hydraulic frame turntable jig. Following a high-speed collision, backbone twist and fork stiction were measured with 3D laser scanners before pulling the frame back to zero-tolerance factory geometry."
-  }
-];
-
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    id: "rev-1",
-    riderName: "Mark 'Big Mac' Sullivan",
-    bikeInfo: "2021 Harley-Davidson Street Glide CVO",
-    location: "Houston, TX",
-    rating: 5,
-    quote: "I took my CVO to two dealership service centers for a high-speed wobble above 70mph. Both told me 'that’s just bagger wind flex.' Paul at The Frame Shop put it on his laser jig, found the motor mount 11mm out of alignment, and fixed it in two days. The bike tracks like an arrow now at 90mph. Paul is a true master.",
-    verifiedService: "Power Train Alignment & Laser Scan"
-  },
-  {
-    id: "rev-2",
-    riderName: "Dave R.",
-    bikeInfo: "Custom 124ci Performance FXR",
-    location: "Spring, TX",
-    rating: 5,
-    quote: "When you build a high-horsepower bike, you can’t trust guesswork. Paul knows frame geometry inside and out. He straightened my neck, aligned my swingarm, and gave me exact specs before and after. Honest, straight-shooter, and unmatched quality.",
-    verifiedService: "Frame Repair & Neck Straightening"
-  },
-  {
-    id: "rev-3",
-    riderName: "Jason K.",
-    bikeInfo: "2019 Harley Road Glide Special",
-    location: "The Woodlands, TX",
-    rating: 5,
-    quote: "The Frame Shop is the only place I will ever let touch my bike's chassis or suspension. Paul treats your motorcycle like his own. Honest pricing, incredible attention to detail, and a guy who actually rides what he builds.",
-    verifiedService: "Suspension Tuning & Brake Audit"
   }
 ];
 

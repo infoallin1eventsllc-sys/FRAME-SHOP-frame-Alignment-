@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 @media print {
-  /* Hide all UI shell elements during print */
-  body * {
+  /* Only when a work order is open: then the page prints as that work order
+     alone. This used to apply to every page, so printing anything else — a
+     policy page, the rate sheet — came out blank. */
+  body:has(#printable-work-order) * {
     visibility: hidden;
   }
 

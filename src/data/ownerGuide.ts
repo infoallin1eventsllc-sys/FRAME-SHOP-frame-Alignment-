@@ -138,39 +138,44 @@ export const OWNER_GUIDE: GuideSection[] = [
   },
   {
     heading: 'Getting Paid',
-    blurb: 'Money is handled in Shopify. The website raises the invoice and keeps track of who has paid.',
+    blurb: 'Online payments go through Shopify. The website raises the invoice and keeps track of what has been paid.',
     items: [
       {
         task: 'Bill a customer for a finished job',
         steps: [
           'Open Work Orders and find the job.',
-          'Click "Create Owner Invoice" and add the labour and parts lines.',
-          'Send it. The customer gets an email with a link to pay.',
+          'Click "Create Owner Invoice". It starts with the booked service at your price from My Rates.',
+          'Add more lines with "Add from my rates" or "Add Custom Item", then click "Save Invoice".',
+          'Click "Email Invoice". The customer gets a Shopify email with a link to pay the balance due.',
         ],
-        note: 'When they pay, the job marks itself as paid here. You do not have to come back and tick anything off.',
+        note: 'Supplies and sales tax are included in what they are charged, and any deposit they already paid is taken off. When they pay, the job marks itself as paid here.',
       },
       {
         task: 'Take a payment at the counter',
-        steps: ['Use the Shopify app or card reader, the same as any other sale.'],
-        note: 'The website does not take cards itself — Shopify does, so all your takings stay in one place for the bookkeeper.',
+        steps: [
+          'Take the money as usual — cash, check, or your card reader.',
+          'Open the job\'s invoice, enter the amount under "Payments received", choose how they paid, and click "Record payment".',
+        ],
+        note: 'A sale rung up on the Shopify app is not linked to the job, so record it here as "Card in shop" too. Made a typing mistake? The bin icon next to a payment you entered removes it.',
       },
       {
         task: 'Get your numbers into a spreadsheet',
-        steps: ['Click "Invoices Excel" or "Matrix Excel" to download for your bookkeeper.'],
+        steps: ['On Work Orders, click "Invoices Excel". On My Rates, click "Excel" for your price list.'],
       },
     ],
   },
   {
     heading: 'Your Prices',
-    blurb: 'Open "Owner Price Matrix". Only you see this.',
+    blurb: 'Open "My Rates". Only you see this.',
     items: [
       {
-        task: 'Change what you charge',
+        task: 'Set what you charge',
         steps: [
-          'Edit the labour rates and parts prices in the table.',
-          '"Print Matrix" gives you a paper copy for the wall.',
+          'Type your labor rate, shop supplies percentage and sales tax.',
+          'Check the price next to each service, change any that are wrong, and add or remove services.',
+          'Click "Save rates". New invoices use them from then on.',
         ],
-        note: 'Your cost and profit columns are for you only. Customers never see this screen.',
+        note: 'The first time you open it, the prices shown are the "starting at" prices your website shows customers. Nothing is used until you save. "Print" gives you a paper copy.',
       },
     ],
   },
