@@ -85,7 +85,7 @@ export const ContactSection: React.FC = () => {
                 <a
                   href={SHOP_INFO.instagramUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-between p-3 rounded-none bg-white border border-zinc-200 hover:border-orange-600 transition-all text-xs text-zinc-700 hover:text-white font-bold uppercase tracking-wider"
                 >
                   <div className="flex items-center gap-3">

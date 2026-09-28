@@ -36,7 +36,14 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
   }, []);
 
   return (
-    <section id="hero" className="relative min-h-[92vh] flex items-center pt-28 pb-16 bg-zinc-950 overflow-hidden font-sans">
+    <section
+      id="hero"
+      /* Top padding clears the fixed header, whose height Navbar publishes as
+         --header-h. The 7rem fallback covers the first paint before the
+         measurement lands; 2rem is breathing room below the header. */
+      style={{ paddingTop: 'calc(var(--header-h, 7rem) + 2rem)' }}
+      className="relative min-h-[92vh] flex items-center pb-16 bg-zinc-950 overflow-hidden font-sans"
+    >
       {/* Background Image with Dark Zinc Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         {heroImage && (
@@ -77,8 +84,10 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
           {/* Left Hero Copy */}
           <div className="lg:col-span-8 space-y-8">
             
-            {/* Top Logo Badge */}
-            <div className="flex items-center gap-4 flex-wrap">
+            {/* Top Logo Badge. data-testid is what the header-overlap test
+                measures: the first thing in the hero, so the first thing a
+                too-short top pad would slide under the fixed header. */}
+            <div data-testid="hero-badges" className="flex items-center gap-4 flex-wrap">
               <div className="bg-zinc-900/90 border border-zinc-800 p-2 shadow-xl inline-flex items-center gap-3">
                 <Logo size="sm" variant="orange" showSubtext={false} />
                 <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300 border-l border-zinc-800 pl-3 py-1">

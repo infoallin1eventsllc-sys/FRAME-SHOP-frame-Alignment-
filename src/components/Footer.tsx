@@ -106,7 +106,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
             <a
               href={SHOP_INFO.instagramUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 text-zinc-400 hover:text-white pt-1 text-xs uppercase font-bold tracking-wider"
             >
               <Instagram className="w-4 h-4 text-orange-500" />
@@ -147,7 +147,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
 
         {/* Studio credit */}
         <div className="pt-8 mt-6 border-t border-zinc-900 flex flex-col items-center gap-3 text-center">
-          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#F7F8F3]">
             This website built by
           </span>
 
@@ -156,9 +156,9 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Meridian Interface"
-            className="opacity-85 hover:opacity-100 transition-opacity"
+            className="transition-opacity hover:opacity-80"
           >
-            <MeridianLogo size={150} />
+            <MeridianLogo size={168} />
           </a>
 
           <p className="max-w-md text-[11px] text-zinc-500 font-normal normal-case tracking-normal leading-relaxed">

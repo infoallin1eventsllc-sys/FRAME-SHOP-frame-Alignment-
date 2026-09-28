@@ -2461,7 +2461,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                               <a
                                 href={vid.url}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="noopener noreferrer"
                                 className="text-[10px] text-zinc-500 hover:text-orange-500 font-mono truncate block"
                               >
                                 {vid.url}

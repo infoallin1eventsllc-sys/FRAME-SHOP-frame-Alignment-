@@ -203,10 +203,12 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
         {/* Tab Selection */}
         <div className="flex justify-center mb-8">
-          <div className="bg-zinc-50 border border-zinc-200 p-1 inline-flex gap-1">
+          {/* Below ~360px this row pushed the GEMINI AI badge past the viewport and
+              the page scrolled sideways, so both rows wrap and padding eases in. */}
+          <div className="bg-zinc-50 border border-zinc-200 p-1 inline-flex flex-wrap justify-center gap-1 max-w-full">
             <button
               onClick={() => setActiveTab('guided')}
-              className={`px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3 sm:px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex flex-wrap items-center justify-center gap-2 ${
                 activeTab === 'guided'
                   ? 'bg-orange-600 text-white shadow-lg'
                   : 'text-zinc-600 hover:text-zinc-800'
@@ -218,7 +220,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
             <button
               onClick={() => setActiveTab('ai')}
-              className={`px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3 sm:px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex flex-wrap items-center justify-center gap-2 ${
                 activeTab === 'ai'
                   ? 'bg-orange-600 text-white shadow-lg'
                   : 'text-zinc-600 hover:text-zinc-800'

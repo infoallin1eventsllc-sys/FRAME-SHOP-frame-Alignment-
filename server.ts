@@ -668,8 +668,17 @@ app.patch("/api/bookings/:id", requireAdmin, (req, res) => {
 app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
-    let bookings = loadBookings();
-    bookings = bookings.filter((b) => b.id !== id);
+    const bookings = loadBookings();
+    const index = bookings.findIndex((b) => b.id === id);
+
+    // Without this check the route reported success for a ticket it never
+    // deleted, and rewrote the whole file to do nothing. PATCH already 404s
+    // on a missing id; DELETE now matches it.
+    if (index === -1) {
+      return res.status(404).json({ error: "Booking ticket not found." });
+    }
+
+    bookings.splice(index, 1);
     saveBookings(bookings);
     res.json({ success: true, message: "Booking removed." });
   } catch (err) {
