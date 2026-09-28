@@ -9,6 +9,7 @@ export const SHOP_INFO = {
   address: "7531 Unit C Root Road, Spring, Texas 77389",
   phone: "(832) 628-5226",
   phoneRaw: "8326285226",
+  email: "theframeshop13@gmail.com",
   hours: "Tuesday through Saturday by appointment only",
   instagramHandle: "@_theframeshop",
   instagramUrl: "https://www.instagram.com/_theframeshop/",

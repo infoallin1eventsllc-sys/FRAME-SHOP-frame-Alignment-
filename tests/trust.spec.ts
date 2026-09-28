@@ -198,6 +198,15 @@ test.describe('Policy pages', () => {
     });
   }
 
+  test('the shop email is on the contact section, the footer and the policies', async ({ page }) => {
+    for (const where of ['/#contact', '/privacy']) {
+      await page.goto(where);
+      await expect(page.locator('a[href="mailto:theframeshop13@gmail.com"]').first()).toBeVisible();
+    }
+    await page.goto('/');
+    await expect(page.locator('footer a[href="mailto:theframeshop13@gmail.com"]')).toBeVisible();
+  });
+
   test('the footer links to every policy', async ({ page }) => {
     await page.goto('/');
     const policies = page.getByRole('navigation', { name: 'Policies' });

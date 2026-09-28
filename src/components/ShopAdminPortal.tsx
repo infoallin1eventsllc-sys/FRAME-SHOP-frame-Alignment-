@@ -2899,7 +2899,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
           <div style={{ textAlign: "center", marginBottom: "20px" }}>
             <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0 }}>THE FRAME SHOP</h1>
             <h3 style={{ fontSize: "14px", margin: "4px 0", letterSpacing: "1px" }}>3D LASER FRAME & CHASSIS ALIGNMENT</h3>
-            <p style={{ fontSize: "12px", margin: 0 }}>{SHOP_INFO.address} • Phone: {SHOP_INFO.phone}</p>
+            <p style={{ fontSize: "12px", margin: 0 }}>{SHOP_INFO.address} • Phone: {SHOP_INFO.phone} • {SHOP_INFO.email}</p>
             <hr style={{ border: "none", borderTop: "2px solid #000", margin: "10px 0" }} />
           </div>
 

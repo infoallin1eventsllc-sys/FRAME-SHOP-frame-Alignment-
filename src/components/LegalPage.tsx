@@ -37,7 +37,8 @@ const H2: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const Contact: React.FC<{ start?: boolean }> = ({ start }) => (
   <>
     {start ? 'Call or text' : 'call or text'} <a href={`tel:${SHOP_INFO.phoneRaw}`} className="underline">{SHOP_INFO.phone}</a>, or write to{' '}
-    {SHOP_INFO.name}, {SHOP_INFO.address}
+    {SHOP_INFO.name}, {SHOP_INFO.address}, or email{' '}
+    <a href={`mailto:${SHOP_INFO.email}`} className="underline">{SHOP_INFO.email}</a>
   </>
 );
 

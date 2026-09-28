@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { SHOP_INFO, FAQS } from '../data/shopData';
 import { ClickToLoadMap } from './ClickToLoadMap';
-import { Phone, MapPin, Clock, Instagram, Send, CheckCircle2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Instagram, Send, CheckCircle2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 
 function newMessageKey() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -93,6 +93,20 @@ export const ContactSection: React.FC = () => {
                   <div>
                     <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Direct Phone / Text</div>
                     <div className="font-black text-zinc-900 text-lg group-hover:text-orange-500 transition-colors uppercase italic">{SHOP_INFO.phone}</div>
+                  </div>
+                </a>
+
+                {/* Email */}
+                <a
+                  href={`mailto:${SHOP_INFO.email}`}
+                  className="flex items-start gap-3 p-3 rounded-none bg-white border border-zinc-200 hover:border-orange-600 transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-none bg-zinc-50 border border-zinc-200 flex items-center justify-center text-orange-600 flex-shrink-0 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Email</div>
+                    <div className="font-bold text-zinc-900 break-all group-hover:text-orange-600 transition-colors">{SHOP_INFO.email}</div>
                   </div>
                 </a>
 

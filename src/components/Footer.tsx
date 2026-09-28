@@ -1,6 +1,6 @@
 import React from 'react';
 import { SHOP_INFO } from '../data/shopData';
-import { Phone, MapPin, Instagram, Wrench, ShieldCheck, Lock } from 'lucide-react';
+import { Phone, Mail, MapPin, Instagram, Wrench, ShieldCheck, Lock } from 'lucide-react';
 import { Logo } from './Logo';
 import { MeridianLogo } from './MeridianLogo';
 
@@ -79,6 +79,12 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
                 <Phone className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
                 <a href={`tel:${SHOP_INFO.phoneRaw}`} className="text-zinc-100 hover:text-orange-500 font-black italic">
                   {SHOP_INFO.phone}
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
+                <a href={`mailto:${SHOP_INFO.email}`} className="text-zinc-300 hover:text-orange-500 break-all">
+                  {SHOP_INFO.email}
                 </a>
               </div>
               <div className="flex items-start gap-2 text-zinc-300">
