@@ -8,6 +8,10 @@ const NOT_CONFIRMED =
   `Please try again, or call Paul on ${SHOP_INFO.phone}.`;
 
 /** crypto.randomUUID needs a secure context; fall back rather than fail. */
+/** Shown beside the box and saved with the booking, word for word. */
+export const MARKETING_CONSENT_TEXT =
+  'Send me occasional offers and shop news from The Frame Shop by email or text. I can opt out at any time.';
+
 function newBookingKey(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
@@ -35,6 +39,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  // Off unless the customer turns it on. A booking is not permission to market.
+  const [marketingConsent, setMarketingConsent] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [bookingTicketNumber, setBookingTicketNumber] = useState<string>('');
   const [bookingId, setBookingId] = useState<string>('');
@@ -63,7 +69,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
    */
   const bookingKeyRef = useRef<string>('');
   useEffect(() => {
-    if (isOpen) bookingKeyRef.current = newBookingKey();
+    if (isOpen) {
+      bookingKeyRef.current = newBookingKey();
+      setMarketingConsent(false);
+    }
   }, [isOpen]);
 
   /**
@@ -103,6 +112,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           phone,
           email,
           idempotencyKey: bookingKeyRef.current,
+          marketingConsent,
+          // Stored with the booking, so there is a record of exactly what was agreed to.
+          ...(marketingConsent ? { marketingConsentWording: MARKETING_CONSENT_TEXT } : {}),
         })
       });
 
@@ -190,10 +202,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               
               {/* Service Selection */}
               <div>
-                <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-2">
+                <label htmlFor="booking-service" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-2">
                   Select Service Required *
                 </label>
                 <select
+                      id="booking-service"
                   value={selectedService}
                   onChange={(e) => setSelectedService(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 text-zinc-100 rounded-none p-3 text-sm focus:outline-none"
@@ -210,10 +223,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {/* Bike Details Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
+                  <label htmlFor="booking-year" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
                     Year *
                   </label>
                   <input
+                      id="booking-year"
                     type="text"
                     value={bikeYear}
                     onChange={(e) => setBikeYear(e.target.value)}
@@ -224,10 +238,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
+                  <label htmlFor="booking-make" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
                     Make *
                   </label>
                   <input
+                      id="booking-make"
                     type="text"
                     value={bikeMake}
                     onChange={(e) => setBikeMake(e.target.value)}
@@ -238,10 +253,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
+                  <label htmlFor="booking-model" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
                     Model *
                   </label>
                   <input
+                      id="booking-model"
                     type="text"
                     value={bikeModel}
                     onChange={(e) => setBikeModel(e.target.value)}
@@ -254,10 +270,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               {/* Symptoms / Issue Notes */}
               <div>
-                <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
+                <label htmlFor="booking-notes" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
                   Describe Handling Issue or Modification Details
                 </label>
                 <textarea
+                      id="booking-notes"
                   value={issueNotes}
                   onChange={(e) => setIssueNotes(e.target.value)}
                   placeholder="e.g., High-speed wobble above 70mph, pulls left, or recently installed 124ci engine kit..."
@@ -269,10 +286,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {/* Preferred Date & Time Slot Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
+                  <label htmlFor="booking-date" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
                     Preferred Date (Tue - Sat) *
                   </label>
                   <input
+                      id="booking-date"
                     type="date"
                     value={preferredDate}
                     onChange={(e) => setPreferredDate(e.target.value)}
@@ -282,10 +300,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
+                  <label htmlFor="booking-time" className="block text-xs font-black text-zinc-300 uppercase tracking-widest mb-1.5">
                     Preferred Time Slot *
                   </label>
                   <select
+                      id="booking-time"
                     value={preferredTimeSlot}
                     onChange={(e) => setPreferredTimeSlot(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-600 text-zinc-100 rounded-none p-3 text-sm focus:outline-none"
@@ -306,8 +325,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Your Name *</label>
+                    <label htmlFor="booking-name" className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Your Name *</label>
                     <input
+                      id="booking-name"
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -318,8 +338,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Phone Number *</label>
+                    <label htmlFor="booking-phone" className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Phone Number *</label>
                     <input
+                      id="booking-phone"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -330,8 +351,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Email Address *</label>
+                    <label htmlFor="booking-email" className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Email Address *</label>
                     <input
+                      id="booking-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -341,6 +363,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="booking-marketing" className="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer">
+                  <input
+                    id="booking-marketing"
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-orange-600 flex-shrink-0"
+                  />
+                  <span>{MARKETING_CONSENT_TEXT} <span className="text-zinc-500">(Optional — not needed to book.)</span></span>
+                </label>
+                <p className="text-[11px] text-zinc-400">
+                  We use your details to arrange and carry out this job. See our{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-400">privacy policy</a>
+                  {' '}and{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-400">terms</a>.
+                </p>
               </div>
 
               {errorMessage && (
@@ -354,7 +395,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <div className="pt-4 border-t border-zinc-800 flex items-center justify-between flex-wrap gap-3">
                 <div className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
-                  <span>Instant Shop Notification &amp; Confirmation</span>
+                  <span>Paul reviews every request and gets back to you</span>
                 </div>
 
                 <button
@@ -420,7 +461,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               >
                 {depositLoading ? 'Redirecting to Payment...' : '💳 Pay $75 Deposit Now'}
               </button>
-              <p className="text-[10px] text-zinc-600 mt-2 text-center">Secure checkout. No account required.</p>
+              <p className="text-[10px] text-zinc-400 mt-2 text-center">
+                Secure checkout. No account required.{' '}
+                <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-400">Deposit &amp; refund terms</a>
+              </p>
             </div>
 
             <div className="p-4 rounded-none bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 text-left max-w-lg mx-auto flex items-start gap-2">

@@ -55,6 +55,7 @@ import { parseVideoUrl, describeVideoUrl, isPlayable } from "../utils/videoEmbed
 import { inspectVideoFile, titleFromFilename } from "../utils/videoFile";
 import { OWNER_GUIDE } from "../data/ownerGuide";
 import { fetchSiteMedia, saveSiteMedia, SiteMedia } from "../utils/siteMedia";
+import { MessagesPanel, fetchMessages } from "./MessagesPanel";
 import {
   processImage,
   formatBytes,
@@ -381,7 +382,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [pinError, setPinError] = useState<string>("");
 
   // Navigation Tab State
-  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "pricematrix" | "media" | "help">("bookings");
+  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "messages" | "pricematrix" | "media" | "help">("bookings");
+  const [unhandledMessages, setUnhandledMessages] = useState(0);
 
   /**
    * Opens the guide as its own plain page so Paul can print it or save it as a
@@ -951,6 +953,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
         const list = Array.isArray(data) ? data : (data.bookings || []);
         setBookings(list);
       }
+      // The messages tab carries a count, so Paul sees new ones without opening it.
+      const msgs = await fetchMessages();
+      if (msgs) setUnhandledMessages(msgs.unhandled);
     } catch {
       // Gracefully handle network/sandboxing constraints
     } finally {
@@ -1214,6 +1219,20 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
                 <button
                   type="button"
+                  onClick={() => setActiveMainTab("messages")}
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    activeMainTab === "messages"
+                      ? "bg-orange-600 text-white shadow"
+                      : unhandledMessages > 0
+                        ? "bg-zinc-950 text-orange-300 hover:text-white border border-orange-600"
+                        : "bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800"
+                  }`}
+                >
+                  ✉️ Customer Messages ({unhandledMessages} new)
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setActiveMainTab("pricematrix")}
                   className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeMainTab === "pricematrix"
@@ -1359,7 +1378,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
           /* Logged-In Admin Content */
           <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
             
-            {activeMainTab === "pricematrix" ? (
+            {activeMainTab === "messages" ? (
+              <MessagesPanel onCountChange={setUnhandledMessages} />
+            ) : activeMainTab === "pricematrix" ? (
               /* Confidential Owner Price Matrix & Rate Sheet View */
               <div className="space-y-6 font-sans">
                 {/* Security Banner & Master Rates KPI Bar */}
@@ -2715,6 +2736,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                             <a href={`mailto:${b.email}`} className="hover:text-zinc-200 truncate">
                               {b.email}
                             </a>
+                          </div>
+                          {/* Only customers who ticked the box may be sent offers. */}
+                          <div
+                            className={`text-[10px] font-bold uppercase tracking-wider ${b.marketingConsent ? "text-emerald-400" : "text-zinc-500"}`}
+                            title={b.marketingConsent ? `Agreed ${new Date(b.marketingConsent.at).toLocaleString()}: "${b.marketingConsent.wording}"` : undefined}
+                          >
+                            {b.marketingConsent ? "✓ OK to send offers" : "No marketing — booking only"}
                           </div>
                         </div>
 

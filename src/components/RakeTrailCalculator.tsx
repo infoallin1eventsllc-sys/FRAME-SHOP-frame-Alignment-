@@ -81,10 +81,12 @@ export const RakeTrailCalculator: React.FC = () => {
             {/* Rake Angle */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <label className="font-bold text-zinc-800 uppercase text-xs tracking-wider">Frame Rake Angle (Degrees)</label>
+                <label htmlFor="calc-rake" className="font-bold text-zinc-800 uppercase text-xs tracking-wider">Frame Rake Angle (Degrees)</label>
                 <span className="font-mono text-orange-500 font-black">{rakeDegrees}°</span>
               </div>
               <input
+                id="calc-rake"
+                aria-valuetext={`${rakeDegrees} degrees`}
                 type="range"
                 min="20"
                 max="45"
@@ -103,10 +105,12 @@ export const RakeTrailCalculator: React.FC = () => {
             {/* Triple Tree Offset */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <label className="font-bold text-zinc-800 uppercase text-xs tracking-wider">Triple Tree Fork Offset (Inches)</label>
+                <label htmlFor="calc-offset" className="font-bold text-zinc-800 uppercase text-xs tracking-wider">Triple Tree Fork Offset (Inches)</label>
                 <span className="font-mono text-orange-500 font-black">{tripleTreeOffset.toFixed(2)}"</span>
               </div>
               <input
+                id="calc-offset"
+                aria-valuetext={`${tripleTreeOffset.toFixed(2)} inches`}
                 type="range"
                 min="0.5"
                 max="4.0"
@@ -125,10 +129,12 @@ export const RakeTrailCalculator: React.FC = () => {
             {/* Tire Outer Diameter */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <label className="font-bold text-zinc-800 uppercase text-xs tracking-wider">Front Tire Overall Diameter (Inches)</label>
+                <label htmlFor="calc-tire" className="font-bold text-zinc-800 uppercase text-xs tracking-wider">Front Tire Overall Diameter (Inches)</label>
                 <span className="font-mono text-orange-500 font-black">{tireDiameter.toFixed(1)}"</span>
               </div>
               <input
+                id="calc-tire"
+                aria-valuetext={`${tireDiameter.toFixed(1)} inches`}
                 type="range"
                 min="20"
                 max="32"

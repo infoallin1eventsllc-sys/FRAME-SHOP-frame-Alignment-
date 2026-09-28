@@ -408,10 +408,11 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               <form onSubmit={handleRunAiDiagnostic} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
+                    <label htmlFor="diag-bike" className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                       Motorcycle Model &amp; Year
                     </label>
                     <input
+                    id="diag-bike"
                       type="text"
                       value={aiBikeModel}
                       onChange={(e) => setAiBikeModel(e.target.value)}
@@ -422,10 +423,11 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
+                    <label htmlFor="diag-speed" className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                       Speed Range Where Issue Occurs
                     </label>
                     <select
+                    id="diag-speed"
                       value={aiSpeedRange}
                       onChange={(e) => setAiSpeedRange(e.target.value)}
                       className="w-full bg-white border border-zinc-200 focus:border-orange-600 text-zinc-900 p-3 text-sm focus:outline-none rounded-none"
@@ -440,10 +442,11 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
+                  <label htmlFor="diag-symptoms" className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                     Describe Handling Symptoms or Modifications
                   </label>
                   <textarea
+                    id="diag-symptoms"
                     value={aiSymptom}
                     onChange={(e) => setAiSymptom(e.target.value)}
                     placeholder="e.g. When taking my hands slightly off the handlebars at 70mph, the rear bagger end sways left and right. Recently had a 128ci kit installed and hit a freeway bump..."

@@ -120,6 +120,12 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
         <div className="pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-zinc-500 text-[11px] font-bold uppercase tracking-wider">
           <div className="flex items-center gap-4 flex-wrap">
             <span>© {new Date().getFullYear()} The Frame Shop. All Rights Reserved.</span>
+            <nav aria-label="Policies" className="flex items-center gap-3 flex-wrap border-l border-zinc-800 pl-4">
+              <a href="/privacy" className="text-zinc-400 hover:text-orange-500 transition-colors">Privacy</a>
+              <a href="/terms" className="text-zinc-400 hover:text-orange-500 transition-colors">Terms</a>
+              <a href="/refunds" className="text-zinc-400 hover:text-orange-500 transition-colors">Refunds</a>
+              <a href="/cookies" className="text-zinc-400 hover:text-orange-500 transition-colors">Cookies</a>
+            </nav>
             {onOpenTracker && (
               <button
                 onClick={onOpenTracker}

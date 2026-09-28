@@ -88,7 +88,8 @@ export function parseVideoUrl(rawUrl: string, opts: ParseOptions = {}): ParsedVi
       return {
         kind: 'vimeo',
         id,
-        embedUrl: `https://player.vimeo.com/video/${id}?autoplay=1${autostart ? '&muted=1&loop=1&playsinline=1' : ''}`,
+        // dnt=1: Vimeo's "do not track" — no cookies or viewing analytics.
+        embedUrl: `https://player.vimeo.com/video/${id}?dnt=1&autoplay=1${autostart ? '&muted=1&loop=1&playsinline=1' : ''}`,
         originalUrl: url,
       };
     }

@@ -466,6 +466,12 @@ interface Booking {
   createdAt: string;
   techNotes?: string;
   invoice?: InternalInvoice;
+  /**
+   * Present only when the customer ticked the (unticked-by-default) box to hear
+   * about offers. Keeps the exact words they agreed to and when, because that
+   * record is what consent actually rests on. Absent means no.
+   */
+  marketingConsent?: { given: true; at: string; wording: string };
 }
 
 
@@ -555,6 +561,9 @@ function loadBookings(): Booking[] {
 function saveBookings(bookings: Booking[]) {
   writeJsonAtomic(BOOKINGS_FILE, bookings, { backups: BOOKING_BACKUPS });
 }
+
+/** A trimmed, length-capped string from untrusted input; "" for anything else. */
+const clean = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 // -----------------------------------------------------------------------------
 // API Routes
@@ -683,6 +692,8 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       phone,
       email,
       idempotencyKey,
+      marketingConsent,
+      marketingConsentWording,
     } = req.body;
 
     if (!name || !phone || !bikeMake || !bikeModel) {
@@ -729,6 +740,16 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       status: "pending",
       createdAt: new Date().toISOString(),
       ...(key ? { idempotencyKey: key } : {}),
+      // Strictly true, never truthy: "yes", 1 or a missing field are not consent.
+      ...(marketingConsent === true
+        ? {
+            marketingConsent: {
+              given: true as const,
+              at: new Date().toISOString(),
+              wording: clean(marketingConsentWording, 500) || "Marketing consent (wording not supplied)",
+            },
+          }
+        : {}),
     };
 
     currentBookings.unshift(newBooking);
@@ -806,6 +827,119 @@ app.delete("/api/bookings/:id", requireAdmin, (req, res) => {
     res.json({ success: true, message: "Booking removed." });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete booking." });
+  }
+});
+
+/* ---------------------------------------------------------------------------
+ * Contact-form messages.
+ *
+ * The "Send a message" form used to show "Message Sent To The Shop!" and send
+ * nothing at all — no request, no storage. Every message a customer typed there
+ * was lost, while the site told them Paul would read it. Messages are now saved
+ * here, durably, and Paul reads them in the owner portal.
+ * ------------------------------------------------------------------------- */
+const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
+
+interface ContactMessage {
+  id: string;
+  name: string;
+  /** Phone or email, as the customer typed it. */
+  reach: string;
+  message: string;
+  createdAt: string;
+  handled: boolean;
+  idempotencyKey?: string;
+}
+
+function loadMessages(): ContactMessage[] {
+  const { data, source } = readJsonWithRecovery<ContactMessage[]>(MESSAGES_FILE, {
+    whenMissing: [],
+    valid: (v): v is ContactMessage[] => Array.isArray(v),
+  });
+  if (source !== "file" && source !== "missing") {
+    logEvent("error", "messages.recovered", { from: source, count: data.length });
+    writeJsonAtomic(MESSAGES_FILE, data, { backups: BOOKING_BACKUPS });
+  }
+  return data;
+}
+
+function saveMessages(list: ContactMessage[]) {
+  writeJsonAtomic(MESSAGES_FILE, list, { backups: BOOKING_BACKUPS });
+}
+
+app.post("/api/messages", bookingLimiter, (req, res) => {
+  try {
+    const name = clean(req.body?.name, 120);
+    const reach = clean(req.body?.reach, 200);
+    const message = clean(req.body?.message, 4000);
+    if (!name || !reach || !message) {
+      return res.status(400).json({ error: "Please fill in your name, a phone or email, and your message." });
+    }
+
+    const rawKey = req.body?.idempotencyKey;
+    const key = typeof rawKey === "string" && rawKey.length <= 100 ? rawKey : undefined;
+    const list = loadMessages();
+    if (key) {
+      const existing = list.find((m) => m.idempotencyKey === key);
+      if (existing) return res.status(200).json({ success: true, id: existing.id, duplicate: true });
+    }
+
+    const entry: ContactMessage = {
+      id: "msg-" + Date.now() + "-" + crypto.randomInt(1000, 10000),
+      name,
+      reach,
+      message,
+      createdAt: new Date().toISOString(),
+      handled: false,
+      ...(key ? { idempotencyKey: key } : {}),
+    };
+    list.unshift(entry);
+    saveMessages(list);
+
+    // As with bookings: no customer details in the log.
+    logEvent("info", "message.received", { id: entry.id, length: message.length });
+    res.status(201).json({ success: true, id: entry.id });
+  } catch (err) {
+    logEvent("error", "message.save.failed", errorFields(err));
+    res.status(500).json({ error: "Your message could not be saved." });
+  }
+});
+
+app.get("/api/messages", requireAdmin, (_req, res) => {
+  try {
+    const messages = loadMessages();
+    res.json({ messages, unhandled: messages.filter((m) => !m.handled).length });
+  } catch (err) {
+    logEvent("error", "messages.read.failed", errorFields(err));
+    res.status(500).json({ error: "Could not read messages." });
+  }
+});
+
+app.patch("/api/messages/:id", requireAdmin, (req, res) => {
+  try {
+    const list = loadMessages();
+    const found = list.find((m) => m.id === req.params.id);
+    if (!found) return res.status(404).json({ error: "Message not found." });
+    if (typeof req.body?.handled === "boolean") found.handled = req.body.handled;
+    saveMessages(list);
+    res.json({ success: true, message: found });
+  } catch (err) {
+    logEvent("error", "message.update.failed", errorFields(err));
+    res.status(500).json({ error: "Failed to update message." });
+  }
+});
+
+app.delete("/api/messages/:id", requireAdmin, (req, res) => {
+  try {
+    const list = loadMessages();
+    const index = list.findIndex((m) => m.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: "Message not found." });
+    list.splice(index, 1);
+    saveMessages(list);
+    res.json({ success: true });
+  } catch (err) {
+    logEvent("error", "message.delete.failed", errorFields(err));
+    res.status(500).json({ error: "Failed to delete message." });
   }
 });
 

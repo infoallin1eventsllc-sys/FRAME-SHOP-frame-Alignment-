@@ -106,5 +106,7 @@ export interface Booking {
   createdAt: string;
   techNotes?: string;
   invoice?: InternalInvoice;
+  /** Present only if the customer ticked the offers box when booking. */
+  marketingConsent?: { given: true; at: string; wording: string };
 }
 

@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { SHOP_INFO, FAQS } from '../data/shopData';
+import { ClickToLoadMap } from './ClickToLoadMap';
 import { Phone, MapPin, Clock, Instagram, Send, CheckCircle2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+
+function newMessageKey() {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export const ContactSection: React.FC = () => {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -8,10 +15,40 @@ export const ContactSection: React.FC = () => {
   const [formPhone, setFormPhone] = useState('');
   const [formMessage, setFormMessage] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const inFlightRef = useRef(false);
+  // One key per message, so a double tap or a retry after a dropped reply
+  // saves it once. Replaced only when the customer starts a new message.
+  const messageKeyRef = useRef(newMessageKey());
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  // This used to set the "sent" flag and nothing else: every message typed
+  // here was thrown away while the page told the customer Paul had it.
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setSending(true);
+    setSendError('');
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formName,
+          reach: formPhone,
+          message: formMessage,
+          idempotencyKey: messageKeyRef.current,
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setFormSubmitted(true);
+    } catch {
+      setSendError(`Your message did not reach the shop. Please try again, or call or text Paul on ${SHOP_INFO.phone}.`);
+    } finally {
+      inFlightRef.current = false;
+      setSending(false);
+    }
   };
 
   return (
@@ -100,17 +137,12 @@ export const ContactSection: React.FC = () => {
               </div>
             </div>
 
-            {/* Embedded Google Map */}
+            {/* Google Map — loaded only on request, so no Google cookies otherwise. */}
             <div className="rounded-none overflow-hidden border border-zinc-200 shadow-xl h-64 bg-zinc-50">
-              <iframe
+              <ClickToLoadMap
+                embedUrl={SHOP_INFO.mapEmbedUrl}
+                address={SHOP_INFO.address}
                 title="The Frame Shop Spring TX Location Map"
-                src={SHOP_INFO.mapEmbedUrl}
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen={false}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
 
@@ -129,10 +161,11 @@ export const ContactSection: React.FC = () => {
             {!formSubmitted ? (
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-black text-zinc-700 uppercase tracking-widest mb-1">
+                  <label htmlFor="contact-name" className="block text-xs font-black text-zinc-700 uppercase tracking-widest mb-1">
                     Your Name *
                   </label>
                   <input
+                    id="contact-name"
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
@@ -143,10 +176,11 @@ export const ContactSection: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-zinc-700 uppercase tracking-widest mb-1">
+                  <label htmlFor="contact-reach" className="block text-xs font-black text-zinc-700 uppercase tracking-widest mb-1">
                     Phone or Email *
                   </label>
                   <input
+                    id="contact-reach"
                     type="text"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
@@ -157,10 +191,11 @@ export const ContactSection: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-zinc-700 uppercase tracking-widest mb-1">
+                  <label htmlFor="contact-message" className="block text-xs font-black text-zinc-700 uppercase tracking-widest mb-1">
                     Message / Motorcycle Details *
                   </label>
                   <textarea
+                    id="contact-message"
                     value={formMessage}
                     onChange={(e) => setFormMessage(e.target.value)}
                     placeholder="Tell us about your bike (Year, Make, Model) and what handling issues or alignment work you need..."
@@ -170,12 +205,24 @@ export const ContactSection: React.FC = () => {
                   />
                 </div>
 
+                {sendError && (
+                  <p role="alert" className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 p-3">
+                    {sendError}
+                  </p>
+                )}
+
+                <p className="text-[11px] text-zinc-600">
+                  We use what you send only to reply to you. See our{' '}
+                  <a href="/privacy" className="underline hover:text-orange-600">privacy policy</a>.
+                </p>
+
                 <button
                   type="submit"
-                  className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-3.5 rounded-none uppercase tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  disabled={sending}
+                  className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-60 disabled:cursor-wait text-white font-black py-3.5 rounded-none uppercase tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>Send Message To Paul</span>
+                  <Send className="w-4 h-4" aria-hidden="true" />
+                  <span>{sending ? 'Sending…' : 'Send Message To Paul'}</span>
                 </button>
               </form>
             ) : (
@@ -193,6 +240,7 @@ export const ContactSection: React.FC = () => {
                     setFormName('');
                     setFormPhone('');
                     setFormMessage('');
+                    messageKeyRef.current = newMessageKey();
                   }}
                   className="text-xs text-orange-500 hover:text-orange-400 uppercase font-bold underline cursor-pointer pt-2 tracking-wider"
                 >
