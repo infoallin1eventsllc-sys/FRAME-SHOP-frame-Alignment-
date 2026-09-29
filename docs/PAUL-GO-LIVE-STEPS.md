@@ -1,3 +1,10 @@
+<p><img src="assets/meridian-letterhead.png" alt="Meridian Interface" width="220"></p>
+
+*Web design, mobile app interfaces, analytics & CRM dashboards, and brand identity systems.*
+[meridianinterface.com](https://meridianinterface.com) · 281-882-9198 · [otis@meridianinterface.com](mailto:otis@meridianinterface.com)
+
+---
+
 # The Frame Shop — Paul's go-live steps
 
 Do these in order. Don't skip ahead: each part needs the one before it.
@@ -133,3 +140,7 @@ approve it.
 Signed off by Paul Hurey: ____________________  Date: __________
 
 Signed off by Otis Williams: ____________________  Date: __________
+
+---
+
+*Prepared for The Frame Shop by Meridian Interface · [meridianinterface.com](https://meridianinterface.com) · 281-882-9198 · [otis@meridianinterface.com](mailto:otis@meridianinterface.com)*
