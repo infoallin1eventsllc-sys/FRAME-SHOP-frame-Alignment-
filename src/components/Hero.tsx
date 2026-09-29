@@ -73,11 +73,6 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-600/20 via-transparent to-transparent pointer-events-none" />
       </div>
 
-      {/* Decorative Oversized Background Text */}
-      <div className="absolute bottom-[-10px] left-[-20px] opacity-[0.03] select-none pointer-events-none hidden md:block">
-        <div className="text-[260px] font-black uppercase leading-none italic tracking-tighter text-zinc-100">ALIGN</div>
-      </div>
-
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end">
           
@@ -88,13 +83,6 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
                 measures: the first thing in the hero, so the first thing a
                 too-short top pad would slide under the fixed header. */}
             <div data-testid="hero-badges" className="flex items-center gap-4 flex-wrap">
-              <div className="bg-zinc-900/90 border border-zinc-800 p-2 shadow-xl inline-flex items-center gap-3">
-                <Logo size="sm" variant="orange" showSubtext={false} />
-                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300 border-l border-zinc-800 pl-3 py-1">
-                  OFFICIAL SHOP EMBLEM
-                </div>
-              </div>
-
               <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-4 py-2.5 rounded-none text-orange-500 text-xs font-black uppercase tracking-widest">
                 <Award className="w-3.5 h-3.5 text-orange-600" />
                 <span>30+ Years Precision Alignment</span>
@@ -129,7 +117,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
               <button
                 onClick={onOpenBooking}
-                className="bg-orange-600 hover:bg-orange-500 text-white font-black px-8 py-4 rounded-none shadow-xl transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest group cursor-pointer"
+                className="bg-orange-600 hover:bg-orange-500 text-white font-black px-8 py-4 rounded-none shadow-sm transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest group cursor-pointer"
                 id="hero-book-now-btn"
               >
                 <Calendar className="w-4 h-4" />

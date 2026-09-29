@@ -228,7 +228,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
         </div>
 
         {/* Diagnostic Container */}
-        <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-10 shadow-2xl relative">
+        <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-10 shadow-sm relative">
           
           {activeTab === 'guided' ? (
             /* Guided Questionnaire */
@@ -257,7 +257,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
               {/* Question Copy */}
               <div className="mb-8">
-                <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 mb-2 uppercase italic">
+                <h3 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-2 uppercase">
                   {QUESTIONS[currentStep].title}
                 </h3>
                 <p className="text-zinc-600 text-sm font-normal">
@@ -329,7 +329,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   )}
                   <div>
                     <div className="text-[10px] uppercase tracking-widest font-black text-orange-500">Diagnostic Verdict</div>
-                    <h3 className="text-xl sm:text-3xl font-black text-zinc-900 uppercase italic">
+                    <h3 className="text-xl sm:text-3xl font-bold text-zinc-900 uppercase">
                       {result?.title}
                     </h3>
                   </div>
@@ -349,7 +349,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               </p>
 
               <div>
-                <h4 className="text-xs font-black uppercase text-orange-600 tracking-widest mb-3">
+                <h4 className="text-xs font-bold uppercase text-orange-600 tracking-widest mb-3">
                   Recommended Shop Services
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -397,7 +397,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   <Sparkles className="w-3.5 h-3.5 text-amber-700" />
                   <span>Interactive AI Chassis Diagnostic Assistant</span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 uppercase italic">
+                <h3 className="text-2xl sm:text-3xl font-bold text-zinc-900 uppercase">
                   DESCRIBE YOUR MOTORCYCLE'S <span className="text-orange-600">HANDLING ISSUE</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-600 font-normal">
@@ -510,13 +510,13 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
               {/* AI Diagnostic Output Card */}
               {aiResult && (
-                <div className="bg-white border-2 border-orange-600/80 p-6 space-y-5 animate-in fade-in duration-300 shadow-2xl">
+                <div className="bg-white border-2 border-orange-600/80 p-6 space-y-5 animate-in fade-in duration-300 shadow-sm">
                   <div className="flex items-center justify-between border-b border-zinc-200 pb-3 flex-wrap gap-2">
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 border border-amber-300">
                         {aiResult.severityLevel}
                       </span>
-                      <h4 className="text-xl sm:text-2xl font-black text-zinc-900 uppercase italic mt-2">
+                      <h4 className="text-xl sm:text-2xl font-bold text-zinc-900 uppercase mt-2">
                         {aiResult.diagnosisTitle}
                       </h4>
                     </div>

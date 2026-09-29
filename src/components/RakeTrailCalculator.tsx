@@ -72,8 +72,8 @@ export const RakeTrailCalculator: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Controls Panel */}
-          <div className="lg:col-span-7 bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-8 space-y-6 shadow-xl">
-            <h3 className="text-lg font-black text-zinc-900 uppercase italic pb-3 border-b border-zinc-200 flex items-center justify-between">
+          <div className="lg:col-span-7 bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-8 space-y-6 shadow-sm">
+            <h3 className="text-lg font-bold text-zinc-900 uppercase pb-3 border-b border-zinc-200 flex items-center justify-between">
               <span>Chassis Parameters</span>
               <span className="text-xs text-orange-500 font-mono font-bold uppercase tracking-wider">Live Calculation</span>
             </h3>
@@ -219,8 +219,8 @@ export const RakeTrailCalculator: React.FC = () => {
 
           {/* Results Display */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-8 shadow-xl space-y-6">
-              <h3 className="text-xs font-black uppercase tracking-widest text-orange-600 border-b border-zinc-200 pb-3">
+            <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-8 shadow-sm space-y-6">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-600 border-b border-zinc-200 pb-3">
                 Calculated Trail Output
               </h3>
 

@@ -13,7 +13,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpenAdmin, onOpenTracker }) => {
   const [isScrolled, setIsStyleScrolled] = useState(false);
   const [mobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isOpenNow, setIsOpenNow] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
   // The header is fixed, so it sits on top of the page rather than pushing it
@@ -46,16 +45,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
     };
     window.addEventListener('scroll', handleScroll);
 
-    // Calculate shop status (Tue-Sat, 9AM-6PM approximate for UI indicator)
-    const now = new Date();
-    const day = now.getDay(); // 0 is Sun, 2 is Tue, 6 is Sat
-    const hour = now.getHours();
-    if (day >= 2 && day <= 6 && hour >= 9 && hour < 18) {
-      setIsOpenNow(true);
-    } else {
-      setIsOpenNow(false);
-    }
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -83,15 +72,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
             </div>
             <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
               <Clock className="w-3.5 h-3.5 text-orange-600" />
-              <span>TUE - SAT // BY APPOINTMENT ONLY</span>
+              <span>Tue – Sat · By appointment only</span>
             </div>
           </div>
 
           <div className="flex items-center gap-6 text-[11px] font-bold uppercase tracking-widest">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-none ${isOpenNow ? 'bg-emerald-500 animate-pulse' : 'bg-orange-600'}`}></span>
-              <span className="text-zinc-300">{isOpenNow ? 'Shop Open Today' : 'By Appointment Only'}</span>
-            </div>
             <a 
               href={SHOP_INFO.instagramUrl} 
               target="_blank" 
@@ -123,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
                 THE FRAME SHOP <span className="text-orange-600">ALIGNMENT</span>
               </div>
               <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">
-                SPRING, TX // EST. 1998
+                Spring, TX · Est. 1998
               </div>
             </div>
           </button>
@@ -150,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
             </button>
             <button 
               onClick={() => handleLinkClick('calculator')}
-              className="hover:text-orange-500 transition-colors py-1 cursor-pointer text-orange-500 font-extrabold"
+              className="hover:text-orange-500 transition-colors py-1 cursor-pointer"
             >
               Rake &amp; Trail
             </button>

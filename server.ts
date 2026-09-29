@@ -36,8 +36,31 @@ const PORT = parseInt(process.env.PORT || "3000", 10);
 const SHOP_INFO_PHONE = "(832) 628-5226";
 
 
+/**
+ * Helmet's default policy only lets the page load from this server, which on
+ * the live site blanked every photo, embedded video and the map. Each outside
+ * source the page really uses is named here, and nothing else.
+ */
+const SUPABASE_ORIGIN = (() => {
+  try { return process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).origin : null; }
+  catch { return null; }
+})();
+const withSupabase = (list: string[]) => (SUPABASE_ORIGIN ? [...list, SUPABASE_ORIGIN] : list);
+
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === "production",
+  contentSecurityPolicy: process.env.NODE_ENV === "production" && {
+    directives: {
+      // Stock photos, YouTube thumbnails, and Paul's own uploads (data: / blob:).
+      "img-src": withSupabase(["'self'", "data:", "blob:", "https://images.unsplash.com", "https://i.ytimg.com"]),
+      // Video files Paul uploads are played from his storage bucket.
+      "media-src": withSupabase(["'self'", "blob:"]),
+      // YouTube and Vimeo players, and the map once a visitor asks for it.
+      "frame-src": [
+        "https://www.youtube-nocookie.com", "https://www.youtube.com",
+        "https://player.vimeo.com", "https://www.google.com",
+      ],
+    },
+  },
   /**
    * Helmet defaults to no-referrer, which breaks embedded video: YouTube can't
    * see which site is asking, so it refuses to play with error 153. This is the

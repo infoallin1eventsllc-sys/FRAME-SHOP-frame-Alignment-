@@ -74,8 +74,8 @@ export const ContactSection: React.FC = () => {
           {/* Location & Contact Info Cards */}
           <div className="lg:col-span-5 space-y-6">
             
-            <div className="bg-zinc-50 p-6 sm:p-8 rounded-none border border-zinc-200 shadow-xl space-y-6">
-              <h3 className="text-xl font-black text-zinc-900 uppercase italic border-b border-zinc-200 pb-3 flex items-center justify-between">
+            <div className="bg-zinc-50 p-6 sm:p-8 rounded-none border border-zinc-200 shadow-sm space-y-6">
+              <h3 className="text-xl font-bold text-zinc-900 uppercase border-b border-zinc-200 pb-3 flex items-center justify-between">
                 <span>Shop Location &amp; Hours</span>
                 <span className="text-xs text-orange-500 font-bold uppercase tracking-wider">Spring, Texas</span>
               </h3>
@@ -152,7 +152,7 @@ export const ContactSection: React.FC = () => {
             </div>
 
             {/* Google Map — loaded only on request, so no Google cookies otherwise. */}
-            <div className="rounded-none overflow-hidden border border-zinc-200 shadow-xl h-64 bg-zinc-50">
+            <div className="rounded-none overflow-hidden border border-zinc-200 shadow-sm h-64 bg-zinc-50">
               <ClickToLoadMap
                 embedUrl={SHOP_INFO.mapEmbedUrl}
                 address={SHOP_INFO.address}
@@ -163,8 +163,8 @@ export const ContactSection: React.FC = () => {
           </div>
 
           {/* Contact Form */}
-          <div className="lg:col-span-7 bg-zinc-50 p-6 sm:p-8 rounded-none border border-zinc-200 shadow-2xl">
-            <h3 className="text-2xl font-black text-zinc-900 uppercase italic mb-2 flex items-center gap-2">
+          <div className="lg:col-span-7 bg-zinc-50 p-6 sm:p-8 rounded-none border border-zinc-200 shadow-sm">
+            <h3 className="text-2xl font-bold text-zinc-900 uppercase mb-2 flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-orange-600" />
               <span>Send Paul A Quick Message</span>
             </h3>
@@ -242,7 +242,7 @@ export const ContactSection: React.FC = () => {
             ) : (
               <div className="text-center py-12 space-y-4 bg-white p-6 rounded-none border border-zinc-200">
                 <CheckCircle2 className="w-12 h-12 text-emerald-700 mx-auto" />
-                <h4 className="text-xl font-black text-zinc-900 uppercase italic">
+                <h4 className="text-xl font-bold text-zinc-900 uppercase">
                   Message Sent To The Shop!
                 </h4>
                 <p className="text-xs text-zinc-600 max-w-md mx-auto font-normal">
@@ -269,7 +269,7 @@ export const ContactSection: React.FC = () => {
         {/* Frequently Asked Questions */}
         <div className="max-w-4xl mx-auto pt-8 border-t border-zinc-200">
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-black text-zinc-900 uppercase italic">
+            <h3 className="text-2xl font-bold text-zinc-900 uppercase">
               FREQUENTLY ASKED QUESTIONS
             </h3>
           </div>

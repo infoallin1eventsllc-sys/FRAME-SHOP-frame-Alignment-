@@ -49,6 +49,19 @@ misses a change — if a test sees old behaviour, restart the server.
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
   Resend or Anthropic.
 
+## Checked 29 Sep (design + system)
+
+- Design pass: italic display type kept only for the hero and each section's
+  headline; sub-headings upright; heavy card shadows and orange button glows
+  removed; decorative "ALIGN" watermark and "Official shop emblem" chip removed.
+- The header no longer claims "Shop Open Today" from the visitor's own clock and
+  made-up hours; it states the real policy (Tue–Sat, by appointment).
+- **Production security policy fixed**: it had been blocking every photo,
+  YouTube/Vimeo video and the map on the live site (tests run on the dev server,
+  where the policy is off, so they never saw it). Now allowed: Unsplash, YouTube,
+  Vimeo, Google Maps, and the Supabase project in `SUPABASE_URL`. After deploy,
+  open the live homepage and check photos, a video and the map all show.
+
 ## Next up
 
 1. **Replace `xlsx`.** The npm package is abandoned; SheetJS publishes fixed

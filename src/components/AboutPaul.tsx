@@ -42,7 +42,7 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
           
           {/* Photo / Visual Frame (Left Column) */}
           <div className="lg:col-span-5 relative">
-            <div className="relative rounded-none overflow-hidden border-2 border-zinc-200 shadow-2xl bg-zinc-900 group">
+            <div className="relative rounded-none overflow-hidden border-2 border-zinc-200 shadow-sm bg-zinc-900 group">
               
               {currentPhoto && !imgError ? (
                 <div className="relative w-full h-[520px] bg-zinc-900">
@@ -217,7 +217,7 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
               </div>
 
               {/* Name & Role Overlay Badge */}
-              <div className="absolute bottom-6 left-6 right-6 bg-zinc-950/95 p-5 rounded-none border border-zinc-800 backdrop-blur-sm shadow-xl">
+              <div className="absolute bottom-6 left-6 right-6 bg-zinc-950/95 p-5 rounded-none border border-zinc-800 backdrop-blur-sm shadow-sm">
                 <div>
                   <div className="text-2xl font-black text-zinc-100 uppercase italic tracking-tight">{SHOP_INFO.owner}</div>
                   <div className="text-xs text-orange-500 font-bold uppercase tracking-widest mt-0.5">{SHOP_INFO.role}</div>
@@ -243,7 +243,7 @@ export const AboutPaul: React.FC<AboutPaulProps> = ({ onOpenBooking }) => {
                 PAUL <span className="text-orange-600">HUREY</span>
               </h2>
               <div className="text-sm font-black text-orange-600 uppercase tracking-widest">
-                OWNER &amp; HEAD MECHANIC // 30+ YEARS CRAFTSMANSHIP
+                OWNER &amp; HEAD MECHANIC · 30+ YEARS CRAFTSMANSHIP
               </div>
             </div>
 
