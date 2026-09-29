@@ -10,6 +10,7 @@ Last updated 29 September 2026. Start here next session.
 | Pull request | #2 → `frameshop-website` (open, not merged) |
 | Clickable demo | https://claude.ai/artifact/6GNnNSJjNXPWXdLApS9NM6 — owner PIN **1234** (demo only) |
 | Paul's instructions | in the portal: "How Do I…?" (`src/data/ownerGuide.ts`) |
+| Paul's go-live steps | `docs/PAUL-GO-LIVE-STEPS.md` |
 | Settings reference | `.env.example` |
 | Earlier Supabase marketing kit + per-client provisioning | `handoff/` (see its README) |
 
