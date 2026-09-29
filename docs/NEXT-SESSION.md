@@ -23,7 +23,7 @@ npm run build               # production build (dist/)
 npm run build:preview       # the single-file demo page -> preview.html
 ```
 
-Tests run against a server you start yourself. For all 104 to run (none
+Tests run against a server you start yourself. For all 111 to run (none
 skipped), start it with the stand-ins, then run the tests with the matching
 variables:
 
@@ -43,7 +43,7 @@ misses a change — if a test sees old behaviour, restart the server.
 
 ## State at the end of 29 Sep
 
-- 104 tests passing; production build and a production smoke test clean.
+- 111 tests passing; production build and a production smoke test clean.
 - Marketing tab shows a count of drafts waiting; Paul gets a morning email (after 7am shop time, only when something is waiting) once email is connected.
 - `npm audit`: `qs` fixed. **`xlsx` still flagged (high)** — see below.
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
@@ -61,6 +61,12 @@ misses a change — if a test sees old behaviour, restart the server.
   where the policy is off, so they never saw it). Now allowed: Unsplash, YouTube,
   Vimeo, Google Maps, and the Supabase project in `SUPABASE_URL`. After deploy,
   open the live homepage and check photos, a video and the map all show.
+
+- Launch basics: `robots.txt`, `sitemap.xml`, a real 404 page (404 status in
+  production), breadcrumbs on inner pages, a 1200×630 share image
+  (`public/og-image.png`), a fifth FAQ. The page's own address in the share
+  tags / Google data is filled in per request from `APP_URL` (set it!) — it
+  used to be hard-coded to localhost:3000.
 
 ## Next up
 
@@ -91,6 +97,9 @@ misses a change — if a test sees old behaviour, restart the server.
 - Terms for the "guarantees"; fill the gaps in the draft **policy pages**; lawyer review.
 - His **Google review link** (Marketing → Settings).
 - Does the shop have its **own website domain**? (needed for sending email)
+- A **reply-time promise** for the contact form ("Paul replies within …")? Only he can commit to one.
+- **Visitor statistics**: does he want them? Google Analytics sets cookies, so it needs a consent banner and a privacy-policy change; a cookie-free counter (e.g. Plausible) does not.
+- **Real reviews**: which Google reviews may the site quote, word for word? (The old invented testimonials were removed.)
 
 ## Things not to undo
 

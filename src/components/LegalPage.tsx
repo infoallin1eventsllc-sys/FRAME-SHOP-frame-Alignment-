@@ -1,6 +1,8 @@
 import React from 'react';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { SHOP_INFO } from '../data/shopData';
+import { LEGAL_PATHS, cleanPath, type LegalPath } from '../data/routes';
+import { Breadcrumbs } from './Breadcrumbs';
 
 /**
  * Privacy, Terms, Deposits & Refunds, and Cookies.
@@ -16,11 +18,11 @@ import { SHOP_INFO } from '../data/shopData';
 export const LEGAL_REVIEWED = false;
 const LAST_UPDATED = '28 September 2026';
 
-export const LEGAL_PATHS = ['/privacy', '/terms', '/refunds', '/cookies'] as const;
-export type LegalPath = (typeof LEGAL_PATHS)[number];
+export { LEGAL_PATHS };
+export type { LegalPath };
 
 export function legalPathFor(pathname: string): LegalPath | null {
-  const clean = pathname.replace(/\/+$/, '') || '/';
+  const clean = cleanPath(pathname);
   return (LEGAL_PATHS as readonly string[]).includes(clean) ? (clean as LegalPath) : null;
 }
 
@@ -313,6 +315,8 @@ export const LegalPage: React.FC<{ path: LegalPath }> = ({ path }) => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+        <Breadcrumbs current={title} />
+
         {!LEGAL_REVIEWED && (
           <div role="note" data-testid="legal-draft-banner" className="mb-8 border-2 border-amber-500 bg-amber-50 p-4 flex gap-3 text-sm text-amber-900">
             <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-600" aria-hidden="true" />

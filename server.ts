@@ -27,6 +27,7 @@ import { acceptInvoice, recomputePayments, balanceDue, shopifyCharge } from "./i
 import { renderInvoicePdf } from "./invoicePdf";
 import { emailEnabled, sendEmail, looksLikeEmail } from "./mailer";
 import { registerMarketing } from "./marketing";
+import { SITE_PAGES, isKnownPage } from "./src/data/routes";
 import { logEvent, errorFields, alertsConfigured } from "./logger";
 
 const app = express();
@@ -1498,6 +1499,32 @@ process.on("uncaughtException", (err) => {
   setTimeout(() => process.exit(1), 250);
 });
 
+/**
+ * The site's public address, for search engines and link previews. APP_URL
+ * when it is set; otherwise the address the visitor actually used. index.html
+ * carries %SITE_URL% where it goes — it used to say localhost:3000, which on
+ * the live site told Google and Facebook the shop lived on a developer's laptop.
+ */
+function siteOrigin(req: express.Request): string {
+  const configured = process.env.APP_URL || "";
+  if (/^https?:\/\/[^\s/]+/.test(configured)) return new URL(configured).origin;
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(
+    `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${siteOrigin(req)}/sitemap.xml\n`
+  );
+});
+
+app.get("/sitemap.xml", (req, res) => {
+  const origin = siteOrigin(req);
+  const urls = SITE_PAGES.map((p) => `  <url><loc>${origin}${p === "/" ? "/" : p}</loc></url>`).join("\n");
+  res.type("application/xml").send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`
+  );
+});
+
 // Start Express + Vite Server
 async function start() {
   if (process.env.NODE_ENV !== "production") {
@@ -1532,17 +1559,26 @@ async function start() {
     // index.html is the one file whose name never changes, so it must always be
     // revalidated — cache it and a deploy stays invisible until the cache expires.
     const noCache = (res: express.Response) => res.setHeader("Cache-Control", "no-cache");
+    // The raw file still has %SITE_URL% in it; the page itself lives at "/".
+    app.get("/index.html", (_req, res) => res.redirect(301, "/"));
     app.use(
       express.static(distPath, {
         maxAge: "1h",
+        // index.html is never served as a plain file: it needs the site's
+        // address filled in, and a 404 status on pages that don't exist.
+        index: false,
         setHeaders: (res, file) => {
           if (file.endsWith(".html")) noCache(res);
         },
       })
     );
-    app.get("*", (_req, res) => {
+    const indexHtml = fs.readFileSync(path.join(distPath, "index.html"), "utf8");
+    app.get("*", (req, res) => {
       noCache(res);
-      res.sendFile(path.join(distPath, "index.html"));
+      res
+        .status(isKnownPage(req.path) ? 200 : 404)
+        .type("html")
+        .send(indexHtml.replaceAll("%SITE_URL%", siteOrigin(req)));
     });
   }
 

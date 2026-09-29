@@ -34,7 +34,8 @@ Keys and passwords are typed straight into the hosting settings, with Otis besid
    and set a budget cap in Google Cloud billing.
 8. [ ] **Video storage (Supabase)**, optional. Only needed to upload video files instead of
    pasting YouTube links. Make a **new** key. The old one was exposed and must not be used.
-9. [ ] **Otis checks:** the site opens at its web address, and the Owner Login accepts your PIN.
+9. [ ] **Otis checks:** the site opens at its web address, the Owner Login accepts your PIN, and
+   `APP_URL` is set to that address (it's what Google and link previews show).
 
 ## Part 2 — Set up the shop (Paul, about 30 minutes)
 
@@ -123,7 +124,9 @@ approve it.
 41. [ ] You have read the draft Privacy, Terms, Refunds and Cookies pages and filled in the
     highlighted gaps, and a lawyer has reviewed them.
 42. [ ] You have answered the open questions: years in business ("EST. 1998" or "30+ years"),
-    "1,200+ frames", whether the case studies are real jobs, and what the guarantees cover.
+    "1,200+ frames", whether the case studies are real jobs, what the guarantees cover, how
+    fast you promise to reply to messages, which Google reviews the site may quote, and
+    whether you want visitor statistics on the site.
 43. [ ] You have approved and posted **one real week** of marketing. ✅ It took under an hour.
 44. [ ] Otis deletes the test bookings, invoices and messages, so the live site starts clean.
 

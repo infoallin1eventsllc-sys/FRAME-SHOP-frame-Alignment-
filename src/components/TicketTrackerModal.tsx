@@ -250,22 +250,6 @@ export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, 
           </div>
         )}
 
-        {/* Quick Sample Search Help */}
-        {!searched && (
-          <div className="bg-zinc-50 p-4 border border-zinc-200 text-xs text-zinc-600 space-y-2">
-            <span className="font-bold text-zinc-900 uppercase tracking-wider block">Sample Test Tickets:</span>
-            <div className="flex flex-wrap gap-2 font-mono">
-              <button
-                type="button"
-                onClick={() => setTicketInput('FS-993102')}
-                className="bg-white border border-zinc-300 hover:border-orange-600 text-zinc-900 px-2 py-1 text-[11px] font-bold cursor-pointer"
-              >
-                FS-993102 (Sample Completed)
-              </button>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   );

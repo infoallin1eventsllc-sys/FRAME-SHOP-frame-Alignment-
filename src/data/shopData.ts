@@ -257,5 +257,9 @@ export const FAQS = [
   {
     q: "What types of motorcycles do you work on?",
     a: "We specialize in Harley-Davidson (Baggers, FXRs, Dynas, Softails), Indian Motorcycles, Performance Cruisers, Custom Choppers, and Classic V-Twins. We also handle frame diagnostics for custom builds and crashed motorcycles."
+  },
+  {
+    q: "How will I know when my bike is ready?",
+    a: "When you book, you get a ticket number. Tap Track Ticket at the top of this site (Tracker at the bottom on a phone) and enter it (or the phone number you booked with) any time to see where your bike is: pending review, confirmed, in the shop on the lift, or completed and ready for pickup."
   }
 ];
