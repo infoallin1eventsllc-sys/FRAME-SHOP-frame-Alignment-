@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Hero } from './components/Hero';
@@ -16,12 +16,16 @@ import { BookingModal } from './components/BookingModal';
 import { ShopAdminPortal } from './components/ShopAdminPortal';
 import { PortalErrorBoundary } from './components/PortalErrorBoundary';
 import { TicketTrackerModal } from './components/TicketTrackerModal';
+import { installScrollReveal } from './utils/scrollReveal';
 
 export default function App() {
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
   const [bookingServiceId, setBookingServiceId] = useState<string>('powertrain-alignment');
   const [isShopAdminOpen, setIsShopAdminOpen] = useState<boolean>(false);
   const [isTrackerOpen, setIsTrackerOpen] = useState<boolean>(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => (pageRef.current ? installScrollReveal(pageRef.current) : undefined), []);
 
   const handleOpenBookingWithService = (serviceId?: string) => {
     if (serviceId) {
@@ -38,7 +42,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-amber-500 selection:text-neutral-950 pb-16 md:pb-0">
+    <div ref={pageRef} className="min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-amber-500 selection:text-neutral-950 pb-16 md:pb-0">
       {/* Navigation Bar */}
       <Navbar
         onOpenBooking={() => handleOpenBookingWithService()}
