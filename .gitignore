@@ -9,7 +9,7 @@ coverage/
 
 # Runtime data. bookings.json holds customer names, phones and emails,
 # and this repository is public. Never commit it.
-data/
+/data/
 
 # Playwright output
 test-results/

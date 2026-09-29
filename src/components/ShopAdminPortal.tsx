@@ -1391,7 +1391,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         Owner Identity Photo
                       </div>
                       <h4 className="text-lg font-black text-zinc-100 uppercase italic">
-                        2. PAUL HEARY BIOPIC PHOTO ("ABOUT PAUL" SECTION)
+                        2. YOUR PHOTO ("ABOUT PAUL" SECTION)
                       </h4>
                     </div>
                     {paulMsg && (

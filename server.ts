@@ -51,8 +51,10 @@ const withSupabase = (list: string[]) => (SUPABASE_ORIGIN ? [...list, SUPABASE_O
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production" && {
     directives: {
-      // Stock photos, YouTube thumbnails, and Paul's own uploads (data: / blob:).
-      "img-src": withSupabase(["'self'", "data:", "blob:", "https://images.unsplash.com", "https://i.ytimg.com"]),
+      // Any https image: Paul can paste a photo's web address in Owner Photo
+      // Control, from wherever it lives. Images can't run code, so this only
+      // decides where pictures may come from. Plus his uploads (data: / blob:).
+      "img-src": ["'self'", "data:", "blob:", "https:"],
       // Video files Paul uploads are played from his storage bucket.
       "media-src": withSupabase(["'self'", "blob:"]),
       // YouTube and Vimeo players, and the map once a visitor asks for it.

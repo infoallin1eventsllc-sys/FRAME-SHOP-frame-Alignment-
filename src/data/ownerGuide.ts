@@ -84,10 +84,10 @@ export const OWNER_GUIDE: GuideSection[] = [
         note: 'The title fills in from the file name. Change it if you want something better.',
       },
       {
-        task: 'Post a video from YouTube instead',
+        task: 'Post a video from YouTube (or Vimeo) instead',
         steps: [
           'Put the video on YouTube. Set it to Unlisted if you do not want it on your channel.',
-          'Copy the link, paste it in the link box, add a title, click "Add Video By Link".',
+          'Tap "Already on YouTube? Add it by link instead", paste the link, give it a name, then tap "Put It On The Website".',
         ],
         note: 'Best choice for older phone videos. No size limit and it plays on every device.',
       },
