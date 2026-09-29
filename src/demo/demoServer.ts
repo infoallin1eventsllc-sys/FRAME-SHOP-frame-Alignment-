@@ -13,6 +13,7 @@
  */
 import { acceptInvoice, recomputePayments } from '../../invoice';
 import { SERVICES } from '../data/shopData';
+import { videoUrl, deleteVideo, clearVideos } from './videoStore';
 
 export const DEMO_PIN = '1234';
 const KEY = 'frameshop-demo-v1';
@@ -48,6 +49,7 @@ function save(s: Store) {
 }
 export function resetDemo() {
   memory = empty();
+  void clearVideos();
   try {
     localStorage.removeItem(KEY);
   } catch {
@@ -291,8 +293,27 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
     save(s);
     return json(200, { ok: true });
   }
-  if (p === '/api/videos/config') return json(200, { enabled: false, maxBytes: 200 * 1024 * 1024 });
-  if (p === '/api/videos' && m === 'GET') return json(200, s.videos);
+  // Uploads are kept in this browser (videoStore.ts). A stored clip's link is
+  // made fresh on each read: the previous visit's blob: link no longer works.
+  if (p === '/api/videos/config') return json(200, { enabled: true, maxBytes: 200 * 1024 * 1024 });
+  if (p === '/api/videos' && m === 'GET') {
+    const list = [];
+    for (const v of s.videos) {
+      if (typeof v.storageObject === 'string' && v.storageObject.startsWith('demo-')) {
+        const url = await videoUrl(v.storageObject);
+        if (url) list.push({ ...v, url });
+      } else {
+        list.push(v);
+      }
+    }
+    return json(200, list);
+  }
+  if (seg[1] === 'videos' && seg[2] === 'object' && seg[3] && m === 'DELETE') {
+    const denied = ownerOnly();
+    if (denied) return denied;
+    await deleteVideo(decodeURIComponent(seg[3]));
+    return json(200, { ok: true });
+  }
   if (p === '/api/videos' && m === 'PUT') {
     const denied = ownerOnly();
     if (denied) return denied;
