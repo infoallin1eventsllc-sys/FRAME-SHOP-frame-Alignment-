@@ -16,3 +16,6 @@ test-results/
 playwright-report/
 dist-demo/
 preview.html
+
+# scripts/diagnose.mjs output
+diagnostic-report/

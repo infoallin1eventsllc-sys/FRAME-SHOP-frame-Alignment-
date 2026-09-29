@@ -2335,9 +2335,11 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                           </a>
 
                           <button
+                            type="button"
                             onClick={() => handleDeleteBooking(b.id)}
                             className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-900 border border-zinc-800 transition-colors cursor-pointer"
                             title="Delete Ticket"
+                            aria-label={`Delete ticket ${b.ticketNumber}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -2376,11 +2378,13 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   setActiveInvoiceBooking(null);
                   setInvoiceFormState(null);
                 }}
                 className="p-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
+                aria-label="Close invoice"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2466,6 +2470,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                       <tr key={item.id || idx}>
                         <td className="p-2">
                           <select
+                            aria-label={`Line ${idx + 1} category`}
                             value={item.category}
                             onChange={(e) => handleInvoiceItemChange(idx, "category", e.target.value)}
                             className="bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs p-1 focus:outline-none focus:border-orange-500 rounded-none"
@@ -2481,6 +2486,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         <td className="p-2">
                           <input
                             type="text"
+                            aria-label={`Line ${idx + 1} description`}
                             value={item.description}
                             onChange={(e) => handleInvoiceItemChange(idx, "description", e.target.value)}
                             className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 text-xs p-1 focus:outline-none focus:border-orange-500 rounded-none"
@@ -2491,6 +2497,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                             type="number"
                             step="0.1"
                             min="0"
+                            aria-label={`Line ${idx + 1} quantity or hours`}
                             value={item.quantity}
                             onChange={(e) => handleInvoiceItemChange(idx, "quantity", parseFloat(e.target.value) || 0)}
                             className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 text-xs p-1 text-center font-mono focus:outline-none focus:border-orange-500 rounded-none"
@@ -2501,6 +2508,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                             type="number"
                             step="0.01"
                             min="0"
+                            aria-label={`Line ${idx + 1} rate in dollars`}
                             value={item.rate}
                             onChange={(e) => handleInvoiceItemChange(idx, "rate", parseFloat(e.target.value) || 0)}
                             className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 text-xs p-1 text-right font-mono focus:outline-none focus:border-orange-500 rounded-none"
@@ -2511,9 +2519,11 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                         </td>
                         <td className="p-2 text-center">
                           <button
+                            type="button"
                             onClick={() => handleRemoveInvoiceItem(idx)}
                             className="p-1 text-zinc-500 hover:text-red-400 cursor-pointer"
                             title="Remove Line Item"
+                            aria-label={`Remove line ${idx + 1}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
