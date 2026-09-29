@@ -24,7 +24,7 @@ npm run build               # production build (dist/)
 npm run build:preview       # the single-file demo page -> preview.html
 ```
 
-Tests run against a server you start yourself. For all 111 to run (none
+Tests run against a server you start yourself. For all 117 to run (none
 skipped), start it with the stand-ins, then run the tests with the matching
 variables:
 
@@ -44,7 +44,7 @@ misses a change — if a test sees old behaviour, restart the server.
 
 ## State at the end of 29 Sep
 
-- 111 tests passing; production build and a production smoke test clean.
+- 117 tests passing; production build and a production smoke test clean.
 - Marketing tab shows a count of drafts waiting; Paul gets a morning email (after 7am shop time, only when something is waiting) once email is connected.
 - `npm audit`: clean (0 vulnerabilities).
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
@@ -68,6 +68,12 @@ misses a change — if a test sees old behaviour, restart the server.
   (`public/og-image.png`), a fifth FAQ. The page's own address in the share
   tags / Google data is filled in per request from `APP_URL` (set it!) — it
   used to be hard-coded to localhost:3000.
+
+- Security pass (from the "securitymaxxing" video): Track Ticket returns only a
+  safe view (`src/utils/publicTicket.ts`) — no email, full phone, customer notes
+  or private invoice notes. Owner login hands out 12-hour session keys, never
+  SHOP_API_SECRET; 5 wrong PINs per visitor per 15 min, 30 in an hour pauses
+  all logins for an hour. Production PIN must be 6+ digits. `tests/security.spec.ts`.
 
 ## Next up
 

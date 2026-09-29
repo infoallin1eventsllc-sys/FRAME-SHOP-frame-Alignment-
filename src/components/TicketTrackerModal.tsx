@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { PublicTicket } from '../utils/publicTicket';
 import { Search, X, CheckCircle2, Clock, Wrench, AlertCircle, Phone, FileText, Printer, ShieldCheck } from 'lucide-react';
 import { SHOP_INFO } from '../data/shopData';
 import { safeFetch } from '../utils/api';
@@ -9,29 +10,7 @@ interface TicketTrackerModalProps {
   onClose: () => void;
 }
 
-interface BookingDetails {
-  id: string;
-  ticketNumber: string;
-  serviceTitle: string;
-  bikeYear: string;
-  bikeMake: string;
-  bikeModel: string;
-  status: 'pending' | 'confirmed' | 'in_shop' | 'completed' | 'cancelled';
-  preferredDate: string;
-  preferredTimeSlot: string;
-  name: string;
-  phone: string;
-  techNotes?: string;
-  createdAt: string;
-  invoice?: {
-    invoiceNumber: string;
-    subtotal: number;
-    shopSuppliesAmount: number;
-    taxAmount: number;
-    totalAmount: number;
-    paymentStatus: string;
-  };
-}
+type BookingDetails = PublicTicket;
 
 export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, onClose }) => {
   const [ticketInput, setTicketInput] = useState('');
@@ -167,8 +146,8 @@ export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="bg-white p-3 border border-zinc-200 space-y-1">
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Rider / Owner</span>
-                <div className="font-black text-zinc-900 text-sm">{foundBooking.name}</div>
-                <div className="text-zinc-600 font-mono">{foundBooking.phone}</div>
+                <div className="font-black text-zinc-900 text-sm">{foundBooking.firstName}</div>
+                {foundBooking.phoneLast4 && <div className="text-zinc-600 font-mono">Phone ending {foundBooking.phoneLast4}</div>}
               </div>
 
               <div className="bg-white p-3 border border-zinc-200 space-y-1">
@@ -215,16 +194,26 @@ export const TicketTrackerModal: React.FC<TicketTrackerModalProps> = ({ isOpen, 
                   <span>${foundBooking.invoice.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-zinc-600 font-mono">
-                  <span>Shop Supplies (7.5%):</span>
+                  <span>Shop Supplies ({foundBooking.invoice.shopSuppliesRatePct}%):</span>
                   <span>${foundBooking.invoice.shopSuppliesAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-zinc-600 font-mono">
-                  <span>Texas Sales Tax (8.25%):</span>
+                  <span>Sales Tax ({foundBooking.invoice.taxRatePct}%):</span>
                   <span>${foundBooking.invoice.taxAmount.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm font-black text-zinc-900 font-mono pt-2 border-t border-zinc-200">
-                  <span>Total Amount Due:</span>
-                  <span className="text-orange-600">${foundBooking.invoice.totalAmount.toFixed(2)}</span>
+                <div className="flex justify-between text-xs text-zinc-900 font-bold font-mono pt-2 border-t border-zinc-200">
+                  <span>Total:</span>
+                  <span>${foundBooking.invoice.totalAmount.toFixed(2)}</span>
+                </div>
+                {foundBooking.invoice.amountPaid > 0 && (
+                  <div className="flex justify-between text-xs text-emerald-700 font-mono">
+                    <span>Paid so far:</span>
+                    <span>-${foundBooking.invoice.amountPaid.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-black text-zinc-900 font-mono pt-2 border-t border-zinc-200" data-testid="tracker-balance">
+                  <span>{foundBooking.invoice.balanceDue > 0 ? 'Balance Due:' : 'Paid in full'}</span>
+                  {foundBooking.invoice.balanceDue > 0 && <span className="text-orange-600">${foundBooking.invoice.balanceDue.toFixed(2)}</span>}
                 </div>
               </div>
             )}

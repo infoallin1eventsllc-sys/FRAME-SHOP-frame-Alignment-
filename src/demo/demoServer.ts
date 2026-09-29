@@ -12,6 +12,7 @@
  * else. The production build does not contain this file.
  */
 import { acceptInvoice, recomputePayments } from '../../invoice';
+import { publicTicket } from '../utils/publicTicket';
 import { SERVICES } from '../data/shopData';
 import { videoUrl, deleteVideo, clearVideos } from './videoStore';
 
@@ -105,7 +106,7 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
     const match = s.bookings.find(
       (b) => b.ticketNumber.toUpperCase() === raw.toUpperCase() || (digits.length >= 10 && b.phone.replace(/\D/g, '') === digits)
     );
-    return match ? json(200, { booking: match }) : json(404, { error: 'No ticket found.' });
+    return match ? json(200, { booking: publicTicket(match) }) : json(404, { error: 'No ticket found.' });
   }
 
   if (p === '/api/bookings' && m === 'GET') {

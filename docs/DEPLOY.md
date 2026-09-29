@@ -41,7 +41,7 @@ and its log says which. That's deliberate.
 | `NODE_ENV` | `production` |
 | `DATA_DIR` | `/data` (the volume's mount path) |
 | `APP_URL` | `https://` + the shop's domain, e.g. `https://theframeshop.com` |
-| `SHOP_OWNER_PIN` | Paul's own PIN (not 1234) |
+| `SHOP_OWNER_PIN` | Paul's own PIN, at least 6 digits |
 | `SHOP_API_SECRET` | 64 random characters: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `SHOPIFY_STORE_DOMAIN` | `yourstore.myshopify.com` |
 | `SHOPIFY_ADMIN_TOKEN` | `shpat_…` |

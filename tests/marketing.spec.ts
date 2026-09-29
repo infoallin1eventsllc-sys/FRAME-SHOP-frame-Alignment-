@@ -318,10 +318,14 @@ test.describe('Marketing Desk', () => {
     await expect(page.getByRole('status')).toContainText('new draft');
 
     // TikTok: a phone-shaped frame, the upright clip Paul picks, the caption over it.
-    const tiktok = page.getByTestId('draft').filter({ hasText: 'Wobble fix in 20 seconds' }).first();
-    await tiktok.getByRole('button', { name: 'Preview on phone' }).click();
+    // Earlier runs may leave drafts with the same title, and the list can reorder;
+    // from here on, follow the one card whose preview is open.
+    await page.getByTestId('draft').filter({ hasText: 'Wobble fix in 20 seconds' }).first().getByRole('button', { name: 'Preview on phone' }).click();
+    const phone = page.getByRole('img', { name: 'tiktok preview' });
+    const tiktok = page.getByTestId('draft').filter({ has: phone });
     const preview = tiktok.getByTestId('post-preview');
-    await expect(preview.getByRole('img', { name: 'tiktok preview' })).toContainText('Wobble at 70? Not anymore.');
+    await expect(phone).toHaveCount(1);
+    await expect(phone).toContainText('Wobble at 70? Not anymore.');
     await expect(preview).toContainText('#harleydavidson');
     await preview.getByLabel('Choose a photo or video for this post').setInputFiles('tests/fixtures/upright.webm');
     await expect(preview.locator('video')).toHaveAttribute('src', /^blob:/);
@@ -336,8 +340,8 @@ test.describe('Marketing Desk', () => {
     expect(JSON.stringify(drafts)).not.toContain('blob:');
 
     // Too long for Google: said here, not discovered at posting time.
-    const google = page.getByTestId('draft').filter({ hasText: 'Power train alignment' }).first();
-    await google.getByRole('button', { name: 'Preview on phone' }).click();
+    await page.getByTestId('draft').filter({ hasText: 'Power train alignment' }).first().getByRole('button', { name: 'Preview on phone' }).click();
+    const google = page.getByTestId('draft').filter({ has: page.getByRole('img', { name: 'google preview' }) });
     await google.getByLabel(/Text — edit freely/).fill('x'.repeat(1501));
     await expect(google.getByTestId('preview-warning')).toContainText('Google allows 1,500');
 

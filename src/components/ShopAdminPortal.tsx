@@ -81,6 +81,14 @@ interface ShopAdminPortalProps {
 
 export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  useEffect(() => {
+    const expired = () => {
+      setIsAuthenticated(false);
+      setPinError("Your login timed out. Enter your PIN again.");
+    };
+    window.addEventListener("shop-session-expired", expired);
+    return () => window.removeEventListener("shop-session-expired", expired);
+  }, []);
   const [pinInput, setPinInput] = useState<string>("");
   const [pinError, setPinError] = useState<string>("");
 
@@ -721,7 +729,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
         body: JSON.stringify({ pin: pinInput }),
       });
       if (!res.ok) {
-        setPinError("Invalid PIN. Access denied.");
+        const body = await res.json().catch(() => ({}));
+        setPinError(body?.error || "Invalid PIN. Access denied.");
         return;
       }
       const data = await res.json();

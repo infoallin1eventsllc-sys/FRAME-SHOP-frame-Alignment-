@@ -24,7 +24,7 @@ Keys and passwords are typed straight into the hosting settings, with Otis besid
    Email can't be sent from a Gmail address. It has to come from a domain the shop owns.
 2. [ ] **Hosting.** Create an account on Railway or Render. Otis sets up the site with a
    *permanent disk*, so bookings survive a restart.
-3. [ ] **Owner PIN.** Choose a 4-digit PIN only you know (not 1234). Otis sets it, along with a
+3. [ ] **Owner PIN.** Choose a PIN of at least 6 digits that only you know (not 123456 or a repeated digit). Otis sets it, along with a
    long secret key the server generates.
 4. [ ] **Shopify** (card payments, deposits, pay links).
    1. In the Shopify admin: Settings → Apps and sales channels → Develop apps → create an app.
