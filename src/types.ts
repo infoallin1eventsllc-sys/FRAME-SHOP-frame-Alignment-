@@ -125,6 +125,10 @@ export interface Booking {
   prepayments?: PaymentRecord[];
   /** Each time the invoice PDF was emailed. */
   invoiceEmails?: { to: string; at: string; balanceDue: number; id?: string }[];
+  /** "How did you hear about us?" from the booking form. */
+  source?: string;
+  completedAt?: string;
+  reviewRequestedAt?: string;
   /** Present only if the customer ticked the offers box when booking. */
   marketingConsent?: { given: true; at: string; wording: string };
 }

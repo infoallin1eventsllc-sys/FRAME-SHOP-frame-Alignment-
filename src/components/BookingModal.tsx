@@ -41,6 +41,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [email, setEmail] = useState<string>('');
   // Off unless the customer turns it on. A booking is not permission to market.
   const [marketingConsent, setMarketingConsent] = useState<boolean>(false);
+  // Optional. Tells Paul which of his marketing actually brings people in.
+  const [source, setSource] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [bookingTicketNumber, setBookingTicketNumber] = useState<string>('');
   const [bookingId, setBookingId] = useState<string>('');
@@ -72,6 +74,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     if (isOpen) {
       bookingKeyRef.current = newBookingKey();
       setMarketingConsent(false);
+      setSource('');
     }
   }, [isOpen]);
 
@@ -113,6 +116,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           email,
           idempotencyKey: bookingKeyRef.current,
           marketingConsent,
+          ...(source ? { source } : {}),
           // Stored with the booking, so there is a record of exactly what was agreed to.
           ...(marketingConsent ? { marketingConsentWording: MARKETING_CONSENT_TEXT } : {}),
         })
@@ -363,6 +367,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="booking-source" className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">
+                  How did you hear about us? <span className="normal-case font-normal text-zinc-500">(optional)</span>
+                </label>
+                <select
+                  id="booking-source"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className="w-full sm:w-72 bg-zinc-950 border border-zinc-800 text-zinc-100 rounded-none p-2.5 text-sm focus:outline-none focus:border-orange-600"
+                >
+                  <option value="">Choose one…</option>
+                  {['Google search', 'Google Maps', 'Instagram', 'Facebook', 'Friend or another rider', 'Returning customer', 'Saw the shop', 'Other'].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">

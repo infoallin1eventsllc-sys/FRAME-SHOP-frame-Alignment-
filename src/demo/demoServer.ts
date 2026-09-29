@@ -19,6 +19,7 @@ export const DEMO_PIN = '1234';
 const KEY = 'frameshop-demo-v1';
 
 type Store = {
+  marketing?: { settings: any; drafts: any[]; runs: any[] };
   bookings: any[];
   messages: any[];
   rates: any | null;
@@ -140,6 +141,9 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
       status: 'pending',
       createdAt: new Date().toISOString(),
       ...(key ? { idempotencyKey: key } : {}),
+      ...(['Google search', 'Google Maps', 'Instagram', 'Facebook', 'Friend or another rider', 'Returning customer', 'Saw the shop', 'Other'].includes(b.source)
+        ? { source: b.source }
+        : {}),
       ...(b.marketingConsent === true
         ? { marketingConsent: { given: true, at: new Date().toISOString(), wording: clean(b.marketingConsentWording, 500) } }
         : {}),
@@ -164,6 +168,7 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
       const { status, techNotes, preferredDate, preferredTimeSlot, invoice } = body || {};
       if (status !== undefined) {
         if (!['pending', 'confirmed', 'in_shop', 'completed', 'cancelled'].includes(status)) return json(400, { error: 'Unknown status.' });
+        if (status === 'completed' && !b.completedAt) b.completedAt = new Date().toISOString();
         b.status = status;
       }
       if (techNotes !== undefined) b.techNotes = techNotes;
@@ -327,6 +332,7 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
   if (p === '/api/payments/config') return json(200, { provider: 'shopify', enabled: false });
   if (p === '/api/shopify/checkout') return json(503, { error: 'Online payment is not connected in demo mode.' });
   if (p === '/api/shopify/invoice/send') return json(503, { error: 'Demo mode: Shopify is not connected, so no email was sent. On the live site this emails the customer a payment link.' });
+  if (p.startsWith('/api/marketing')) return demoMarketing(s, m, seg, body, ownerOnly);
   if (p === '/api/email/config') return json(200, { enabled: false, replyTo: 'theframeshop13@gmail.com' });
   if (seg[1] === 'bookings' && (seg[3] === 'invoice.pdf' || seg[3] === 'invoice')) {
     return json(503, { error: 'Demo mode: PDFs are made by the server, so Download PDF and Email PDF only work on the live site.' });
@@ -334,4 +340,136 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
   if (p === '/api/diagnostic') return json(503, { error: 'The AI diagnostic is not connected in demo mode.' });
 
   return json(404, { error: `No such endpoint: ${m} ${p}` });
+}
+
+/* ---------------------------------------------------------------------------
+ * The Marketing Desk, in the demo.
+ *
+ * The live assistants are Claude, on Paul's own key — the demo has no AI. So
+ * that the approve / copy / mark-posted flow can be tried, the demo builds
+ * simple drafts from the demo's own bookings and messages, and every one is
+ * plainly labelled as a demo sample. Nothing here is what Claude would write.
+ * ------------------------------------------------------------------------- */
+const DEMO_TAG = '[DEMO SAMPLE — on the live site, Claude writes this from your shop records.]\n\n';
+
+function demoMarketing(s: Store, m: string, seg: string[], body: any, ownerOnly: () => Response | null): Response {
+  const denied = ownerOnly();
+  if (denied) return denied;
+  const mk = (s.marketing ??= {
+    settings: { brandVoice: 'Plain, straight-talking and knowledgeable — a working mechanic, not an ad agency.', googleReviewUrl: '', competitors: '', autopilot: false },
+    drafts: [],
+    runs: [],
+  });
+  const now = new Date().toISOString();
+  const add = (d: any) => {
+    const full = { id: `dr-${uid()}`, status: 'pending', createdAt: now, updatedAt: now, ...d, body: DEMO_TAG + d.body };
+    mk.drafts.unshift(full);
+    return full;
+  };
+  const bike = (b: any) => [b.bikeYear, b.bikeMake, b.bikeModel].filter(Boolean).join(' ');
+  const first = (n: string) => (n || '').trim().split(/\s+/)[0] || 'there';
+
+  if (seg[2] === undefined && m === 'GET') {
+    const t = Date.now();
+    const within = (iso: string, days: number, from = 0) => t - Date.parse(iso) < days * 86400000 && t - Date.parse(iso) >= from * 86400000;
+    const tally = (list: any[], key: (b: any) => string) =>
+      Object.entries(list.reduce((a: Record<string, number>, b) => ((a[key(b)] = (a[key(b)] || 0) + 1), a), {} as Record<string, number>) as Record<string, number>)
+        .map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n);
+    const recent = s.bookings.filter((b) => within(b.createdAt, 90));
+    let collected = 0, invoiced = 0, outstanding = 0;
+    for (const b of s.bookings) {
+      if (!b.invoice) continue;
+      if (within(b.invoice.createdDate || now, 30)) invoiced += b.invoice.totalAmount || 0;
+      for (const p of b.invoice.payments || []) if (within(p.paidAt, 30)) collected += p.amount;
+      outstanding += Math.max(0, (b.invoice.totalAmount || 0) - (b.invoice.amountPaid || 0));
+    }
+    const done = mk.drafts.filter((d) => d.status === 'done');
+    return json(200, {
+      connected: true, emailConnected: false, model: 'demo', usage: { used: mk.runs.length, cap: 60 },
+      settings: mk.settings,
+      drafts: mk.drafts.filter((d) => d.status !== 'discarded'),
+      runs: mk.runs.slice(0, 20),
+      results: {
+        bookings30: s.bookings.filter((b) => within(b.createdAt, 30)).length,
+        bookingsPrev30: s.bookings.filter((b) => within(b.createdAt, 60, 30)).length,
+        sources90: tally(recent, (b) => b.source || 'Not asked / not given'),
+        services90: tally(recent, (b) => b.serviceTitle || 'Other'),
+        invoiced30: Math.round(invoiced * 100) / 100, collected30: Math.round(collected * 100) / 100, outstanding: Math.round(outstanding * 100) / 100,
+        emailList: new Set(s.bookings.filter((b) => b.marketingConsent).map((b) => b.email)).size, unsubscribed: 0,
+        messages30: s.messages.filter((x) => within(x.createdAt, 30)).length, messagesWaiting: s.messages.filter((x) => !x.handled).length,
+        published30: done.filter((d) => ['content', 'review_reply'].includes(d.agent)).length, emailsSent30: 0,
+        reviewRequests30: done.filter((d) => d.agent === 'review_request').length,
+      },
+    });
+  }
+
+  if (seg[2] === 'settings' && m === 'PUT') {
+    const url = String(body?.googleReviewUrl || '').trim();
+    if (url && !/^https:\/\/\S+$/.test(url)) return json(400, { error: 'The Google review link should start with https://' });
+    mk.settings = { brandVoice: String(body?.brandVoice || mk.settings.brandVoice), googleReviewUrl: url, competitors: String(body?.competitors || ''), autopilot: body?.autopilot === true };
+    save(s);
+    return json(200, { settings: mk.settings });
+  }
+
+  if (seg[2] === 'run' && m === 'POST') {
+    const agent = seg[3];
+    const added: any[] = [];
+    if (agent === 'radar') return json(503, { error: 'Demo mode: the market radar searches the web with Claude, so it only runs on the live site.' });
+    if (agent === 'content') {
+      const jobs = s.bookings.filter((b) => b.status === 'completed').slice(0, 3);
+      const topics = jobs.length ? jobs.map((b) => `${bike(b)} — ${b.serviceTitle}`) : SERVICES.slice(0, 3).map((x) => x.title);
+      topics.forEach((topic, i) =>
+        added.push(add({ agent, channel: ['instagram', 'facebook', 'google'][i % 3], title: topic, body: `${topic}. [ask Paul: what was wrong, and what it rides like now]`, hashtags: ['theframeshop', 'springtx'], photoIdea: 'The bike on the jig' }))
+      );
+    }
+    if (agent === 'reply') {
+      const covered = new Set(mk.drafts.filter((d) => d.agent === 'reply' && d.status !== 'discarded').map((d) => d.target?.messageId));
+      for (const msg of s.messages.filter((x) => !x.handled && !covered.has(x.id)))
+        added.push(add({ agent, channel: /@/.test(msg.reach) ? 'email' : 'text', title: `Reply to ${first(msg.name)}`, subject: 'Re: your message to The Frame Shop', body: `Hi ${first(msg.name)}, thanks for getting in touch. [ask Paul: answer to their question] Book online or call (832) 628-5226. — Paul`, target: { messageId: msg.id } }));
+    }
+    if (agent === 'review_reply') {
+      if (!String(body?.review || '').trim()) return json(400, { error: 'Paste the review you want to answer.' });
+      added.push(add({ agent, channel: 'review', title: `Reply to ${body?.reviewer || 'a'} review`, body: `Thanks ${body?.reviewer || 'for the review'} — [ask Paul: a line about their bike]. — Paul` }));
+    }
+    if (agent === 'review_request') {
+      if (!mk.settings.googleReviewUrl) return json(400, { error: 'Add your Google review link in Marketing settings first.' });
+      const covered = new Set(mk.drafts.filter((d) => d.agent === 'review_request' && d.status !== 'discarded').map((d) => d.target?.bookingId));
+      for (const b of s.bookings.filter((x) => x.status === 'completed' && x.email && !covered.has(x.id)))
+        added.push(add({ agent, channel: 'email', title: `Review request — ${bike(b)}`, subject: `How is the ${bike(b)} riding?`, body: `Hi ${first(b.name)}, if the ${b.serviceTitle} did the job, a short review helps other riders find us: ${mk.settings.googleReviewUrl} — Paul`, target: { bookingId: b.id } }));
+    }
+    if (agent === 'campaign') {
+      const goal = String(body?.goal || '').trim();
+      if (!goal) return json(400, { error: 'Say what the email is for — for example, “fill the slow Tuesdays in March”.' });
+      added.push(add({ agent, channel: 'email', title: `Email campaign: ${goal.slice(0, 60)}`, subject: goal.slice(0, 80), body: `Hi {first_name}, [ask Paul: the offer for "${goal}"]. Book online or call (832) 628-5226.` }));
+    }
+    mk.runs.unshift({ agent, at: now, ok: true, drafts: added.length });
+    save(s);
+    return json(200, { drafts: added, message: added.length ? `${added.length} demo sample draft${added.length === 1 ? '' : 's'} to review.` : 'Nothing needed doing.' });
+  }
+
+  const d = mk.drafts.find((x) => x.id === seg[3]);
+  if (seg[2] === 'drafts' && !d) return json(404, { error: 'Draft not found.' });
+  if (seg[2] === 'drafts' && m === 'PATCH') {
+    if (typeof body?.body === 'string') d.body = body.body;
+    if (typeof body?.subject === 'string') d.subject = body.subject;
+    if (['pending', 'approved', 'discarded'].includes(body?.status)) d.status = body.status;
+    d.updatedAt = now;
+    save(s);
+    return json(200, { draft: d });
+  }
+  if (seg[2] === 'drafts' && seg[4] === 'done') {
+    d.status = 'done';
+    d.doneNote = String(body?.note || 'Marked done');
+    d.updatedAt = now;
+    if (d.agent === 'reply' && d.target?.messageId) {
+      const msg = s.messages.find((x) => x.id === d.target.messageId);
+      if (msg) msg.handled = true;
+    }
+    save(s);
+    return json(200, { draft: d });
+  }
+  if (seg[2] === 'drafts' && seg[4] === 'send') {
+    return json(503, { error: 'Demo mode: email sending is not connected. Copy the text and mark it sent, or try it on the live site.' });
+  }
+  return json(404, { error: 'No such endpoint.' });
 }

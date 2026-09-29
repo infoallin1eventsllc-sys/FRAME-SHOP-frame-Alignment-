@@ -58,6 +58,7 @@ import { inspectVideoFile, titleFromFilename } from "../utils/videoFile";
 import { OWNER_GUIDE } from "../data/ownerGuide";
 import { fetchSiteMedia, saveSiteMedia, SiteMedia } from "../utils/siteMedia";
 import { MessagesPanel, fetchMessages } from "./MessagesPanel";
+import { MarketingPanel } from "./MarketingPanel";
 import {
   processImage,
   formatBytes,
@@ -215,7 +216,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [pinError, setPinError] = useState<string>("");
 
   // Navigation Tab State
-  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "messages" | "pricematrix" | "media" | "help">("bookings");
+  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "messages" | "marketing" | "pricematrix" | "media" | "help">("bookings");
   const [unhandledMessages, setUnhandledMessages] = useState(0);
 
   /**
@@ -1196,6 +1197,18 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
                 <button
                   type="button"
+                  onClick={() => setActiveMainTab("marketing")}
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    activeMainTab === "marketing"
+                      ? "bg-orange-600 text-white shadow"
+                      : "bg-zinc-950 text-orange-300 hover:text-white border border-orange-600/50"
+                  }`}
+                >
+                  ✨ Marketing
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setActiveMainTab("pricematrix")}
                   className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeMainTab === "pricematrix"
@@ -1342,6 +1355,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
             
             {activeMainTab === "messages" ? (
               <MessagesPanel onCountChange={setUnhandledMessages} />
+            ) : activeMainTab === "marketing" ? (
+              <MarketingPanel onDataChanged={fetchBookings} />
             ) : activeMainTab === "pricematrix" ? (
               <RatesPanel onSaved={setRates} />
             ) : activeMainTab === "media" ? (
@@ -2223,6 +2238,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                           >
                             {b.marketingConsent ? "✓ OK to send offers" : "No marketing — booking only"}
                           </div>
+                          {b.source && (
+                            <div className="text-[10px] text-zinc-500">Heard about us: {b.source}</div>
+                          )}
                         </div>
 
                         {/* Bike & Requested Service */}

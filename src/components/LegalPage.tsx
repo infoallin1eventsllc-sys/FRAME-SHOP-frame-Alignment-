@@ -66,6 +66,10 @@ const Privacy = () => (
         use them to reply.
       </li>
       <li>
+        <strong>If you tell us how you heard about us</strong> when booking: that answer, which helps us see which of our
+        advertising works. It is optional.
+      </li>
+      <li>
         <strong>When you use the AI diagnostic tool:</strong> the bike, speed and symptoms you type in. These are sent
         to Google's Gemini service to produce the suggestion you see. The tool does not ask for your name or contact
         details — please don't type them into it.
@@ -91,6 +95,12 @@ const Privacy = () => (
       <li><strong>Our hosting provider</strong> <Gap>name of host, e.g. Railway</Gap>, which runs this site and stores the booking and message records.</li>
       <li><strong>Shopify</strong>, for payments.</li>
       <li><strong>Google</strong>, for the AI diagnostic tool, and for the map — but only if you press "Show map".</li>
+      <li>
+        <strong>Anthropic</strong> (Claude), which helps the shop draft replies to messages. It receives the text of your
+        message, with phone numbers and email addresses removed — not your name or contact details. Every reply is read and
+        approved by the shop before it is sent.
+      </li>
+      <li><strong>Resend</strong>, which delivers the emails the shop sends you, such as invoices.</li>
       <li><strong>YouTube or Vimeo</strong>, if they host a shop video you watch on this page.</li>
     </ul>
     <p>We may also disclose information where the law requires it.</p>
@@ -105,7 +115,8 @@ const Privacy = () => (
     <H2>Your choices</H2>
     <p>
       You can ask to see the information we hold about you, to correct it, or to delete it (unless we must keep it,
-      for example for tax records), and you can withdraw consent to offers at any time. To do any of these, <Contact />.
+      for example for tax records), and you can withdraw consent to offers at any time — every offer email has an
+      unsubscribe link that works in one click. To do any of these, <Contact />.
       We will respond within <Gap>e.g. 30 days</Gap>.
     </p>
 

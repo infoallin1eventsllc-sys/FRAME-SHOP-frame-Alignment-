@@ -26,6 +26,7 @@ import { SERVICES as PUBLIC_SERVICE_PRICES, SHOP_INFO } from "./src/data/shopDat
 import { acceptInvoice, recomputePayments, balanceDue, shopifyCharge } from "./invoice";
 import { renderInvoicePdf } from "./invoicePdf";
 import { emailEnabled, sendEmail, looksLikeEmail } from "./mailer";
+import { registerMarketing } from "./marketing";
 import { logEvent, errorFields, alertsConfigured } from "./logger";
 
 const app = express();
@@ -488,6 +489,12 @@ interface Booking {
   prepayments?: PaymentRecord[];
   /** Every time the invoice PDF was emailed: to whom, when, and the balance it showed. */
   invoiceEmails?: { to: string; at: string; balanceDue: number; id?: string }[];
+  /** "How did you hear about us?" — optional, from the booking form. */
+  source?: string;
+  /** Set when the status first becomes completed. */
+  completedAt?: string;
+  /** When the review-request email went out, so it is only ever sent once. */
+  reviewRequestedAt?: string;
   /**
    * Present only when the customer ticked the (unticked-by-default) box to hear
    * about offers. Keeps the exact words they agreed to and when, because that
@@ -645,6 +652,9 @@ app.get("/api/bookings", requireAdmin, (req, res) => {
   res.json({ bookings, total });
 });
 
+/** The answers the booking form offers to "How did you hear about us?". Anything else is ignored. */
+const BOOKING_SOURCES = ["Google search", "Google Maps", "Instagram", "Facebook", "Friend or another rider", "Returning customer", "Saw the shop", "Other"];
+
 // POST /api/bookings - Create new appointment and dispatch notification digest
 app.post("/api/bookings", bookingLimiter, (req, res) => {
   try {
@@ -663,6 +673,7 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       idempotencyKey,
       marketingConsent,
       marketingConsentWording,
+      source,
     } = req.body;
 
     if (!name || !phone || !bikeMake || !bikeModel) {
@@ -709,6 +720,7 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       status: "pending",
       createdAt: new Date().toISOString(),
       ...(key ? { idempotencyKey: key } : {}),
+      ...(BOOKING_SOURCES.includes(source) ? { source } : {}),
       // Strictly true, never truthy: "yes", 1 or a missing field are not consent.
       ...(marketingConsent === true
         ? {
@@ -764,6 +776,7 @@ app.patch("/api/bookings/:id", requireAdmin, (req, res) => {
       if (!["pending", "confirmed", "in_shop", "completed", "cancelled"].includes(status)) {
         return res.status(400).json({ error: "Unknown status." });
       }
+      if (status === "completed" && !bookings[index].completedAt) bookings[index].completedAt = new Date().toISOString();
       bookings[index].status = status;
     }
     if (techNotes !== undefined) bookings[index].techNotes = techNotes;
@@ -1418,6 +1431,19 @@ app.post("/api/shopify/invoice/send", requireAdmin, async (req, res) => {
     logEvent("error", "shopify.invoice.failed", errorFields(err));
     res.status(502).json({ error: "Failed to send the invoice.", details: err.message });
   }
+});
+
+registerMarketing(app, {
+  dataDir: DATA_DIR,
+  shop: SHOP_INFO,
+  services: PUBLIC_SERVICE_PRICES,
+  loadBookings,
+  saveBookings,
+  loadMessages,
+  saveMessages,
+  loadRates,
+  requireAdmin,
+  limiter: bookingLimiter,
 });
 
 /**

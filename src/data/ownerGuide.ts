@@ -168,6 +168,54 @@ export const OWNER_GUIDE: GuideSection[] = [
     ],
   },
   {
+    heading: 'Your Marketing',
+    blurb: 'Open "Marketing". Assistants draft the work; you approve every word before anything goes out.',
+    items: [
+      {
+        task: 'Get the week\'s posts written',
+        steps: [
+          'Marketing → "Run an assistant" → Content planner → Run.',
+          'Open "To approve". Read each post, change anything, fill in any [ask Paul: …] gaps.',
+          'Press Approve, then Copy, paste it into Instagram, Facebook or Google, and press Mark posted.',
+        ],
+        note: 'Posts are written from your finished jobs and your notes on them. The more you write in the tech notes, the better the posts get.',
+      },
+      {
+        task: 'Answer customer messages faster',
+        steps: [
+          'Run "Inbox replies". Each waiting message gets a drafted answer.',
+          'Edit it, press Approve, then Send email — or Copy it into a text if they left a phone number.',
+        ],
+      },
+      {
+        task: 'Get more Google reviews',
+        steps: [
+          'Once: Marketing → Settings → paste your Google review link.',
+          'Run "Review requests" after jobs are finished. Approve and send.',
+        ],
+        note: 'Never offer anything in return for a review — Google removes reviews that were paid for in any way.',
+      },
+      {
+        task: 'Email your regulars',
+        steps: [
+          'Run "Email campaign" and say what it is for, e.g. "spring check-ups".',
+          'Approve it, then Send. It goes only to customers who ticked "send me offers".',
+        ],
+        note: 'Every email carries an unsubscribe link, as the law requires. Someone who unsubscribes is taken off automatically.',
+      },
+      {
+        task: 'Let it run itself',
+        steps: ['Marketing → Settings → tick Autopilot → Save.'],
+        note: 'Every morning it drafts replies and review requests; every Monday, the week\'s posts and a market brief. Drafts only — nothing goes out until you approve it.',
+      },
+      {
+        task: 'See what is working',
+        steps: ['Marketing → Results.'],
+        note: '"Where customers heard about you" comes from the new question on the booking form, so it fills in over the first few weeks.',
+      },
+    ],
+  },
+  {
     heading: 'Your Prices',
     blurb: 'Open "My Rates". Only you see this.',
     items: [

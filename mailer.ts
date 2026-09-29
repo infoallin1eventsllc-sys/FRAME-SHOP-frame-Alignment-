@@ -30,6 +30,8 @@ export async function sendEmail(opts: {
   subject: string;
   text: string;
   attachment?: { filename: string; content: Buffer };
+  /** e.g. List-Unsubscribe, which mail apps show as their own unsubscribe button. */
+  headers?: Record<string, string>;
 }): Promise<{ id: string }> {
   if (!emailEnabled()) throw new Error("Email is not configured on this server.");
   const res = await fetch(RESEND_API_URL, {
@@ -42,6 +44,7 @@ export async function sendEmail(opts: {
       reply_to: opts.replyTo,
       subject: opts.subject,
       text: opts.text,
+      ...(opts.headers ? { headers: opts.headers } : {}),
       ...(opts.attachment
         ? { attachments: [{ filename: opts.attachment.filename, content: opts.attachment.content.toString("base64") }] }
         : {}),
