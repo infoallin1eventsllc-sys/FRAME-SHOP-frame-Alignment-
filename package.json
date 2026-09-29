@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "build:demo": "vite build --mode demo --outDir dist-demo"
+    "build:demo": "vite build --mode demo --outDir dist-demo",
+    "build:preview": "npm run build:demo && node scripts/build-preview.mjs preview.html dist-demo"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

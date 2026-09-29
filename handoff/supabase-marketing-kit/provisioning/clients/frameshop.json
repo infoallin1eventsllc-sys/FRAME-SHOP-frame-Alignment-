@@ -1,0 +1,28 @@
+{
+  "slug": "frameshop",
+  "tier": "solo",
+  "business": {
+    "name": "The Frame Shop",
+    "industry": "motorcycle frame and alignment",
+    "owner": "Paul Hurey",
+    "location": "Spring, Texas",
+    "timezone": "America/Chicago",
+    "website": "",
+    "voice": "plain, direct, shop-floor — no marketing gloss. Paul talks like a mechanic, not a brochure.",
+    "services": [
+      "Frame straightening",
+      "Power train alignment",
+      "Suspension tuning",
+      "Tire changes and dynamic balance",
+      "Brake inspections",
+      "Custom parts and fabrication"
+    ]
+  },
+  "goals": {
+    "primary": "Fill the bench — turn inspection bookings into paid alignment work"
+  },
+  "consent": {
+    "form_asks": false,
+    "_comment": "true only once the booking form has an unticked checkbox in its own words. Until then no contact may be marketed to."
+  }
+}

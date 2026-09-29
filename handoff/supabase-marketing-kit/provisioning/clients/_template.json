@@ -1,0 +1,20 @@
+{
+  "slug": "acme",
+  "tier": "solo",
+  "business": {
+    "name": "Acme Co",
+    "industry": "",
+    "owner": "",
+    "location": "",
+    "timezone": "America/Chicago",
+    "website": "",
+    "voice": "How this business actually talks. Be specific — this is what the agent imitates.",
+    "services": []
+  },
+  "goals": {
+    "primary": "The one outcome this business wants more of"
+  },
+  "consent": {
+    "form_asks": false
+  }
+}
