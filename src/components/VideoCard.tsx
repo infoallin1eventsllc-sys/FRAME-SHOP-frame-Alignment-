@@ -32,6 +32,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, soundOn, onRequestS
   // Embeds are only mounted once the card is on screen; unmounting them again
   // would restart the clip every time it scrolled past, so this stays true.
   const [hasBeenSeen, setHasBeenSeen] = useState(false);
+  // Phone footage is usually filmed upright. In a widescreen frame it shrank to
+  // a sliver between black bars, so an upright clip gets a tall frame instead.
+  const [portrait, setPortrait] = useState(false);
 
   useEffect(() => {
     const card = cardRef.current;
@@ -71,7 +74,10 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, soundOn, onRequestS
       ref={cardRef}
       className="bg-zinc-900 border border-zinc-800 hover:border-orange-600/50 transition-colors group"
     >
-      <div className="relative aspect-video bg-zinc-950 overflow-hidden">
+      <div
+        data-testid="video-frame"
+        className={`relative bg-zinc-950 overflow-hidden ${portrait ? 'h-[75vh] max-h-[720px]' : 'aspect-video'}`}
+      >
         {isFile && parsed.embedUrl ? (
           <>
             <video
@@ -84,6 +90,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, soundOn, onRequestS
               playsInline
               controls
               preload="metadata"
+              onLoadedMetadata={(e) => setPortrait(e.currentTarget.videoHeight > e.currentTarget.videoWidth)}
               className="w-full h-full object-contain bg-black"
             />
             <button
