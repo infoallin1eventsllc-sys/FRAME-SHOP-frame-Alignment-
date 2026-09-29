@@ -32,11 +32,13 @@ export interface Draft {
   createdAt: string;
   updatedAt: string;
   title: string;
-  channel: "instagram" | "facebook" | "google" | "email" | "text" | "review" | "brief";
+  channel: "instagram" | "facebook" | "tiktok" | "google" | "email" | "text" | "review" | "brief";
   subject?: string;
   body: string;
   hashtags?: string[];
   photoIdea?: string;
+  /** TikTok: the clip to film — the hook, the shots, the words on screen. */
+  videoPlan?: string;
   suggestedDate?: string;
   sources?: { url: string; title: string }[];
   /** Who it is for. Kept on the server; the AI never saw these. */
@@ -175,13 +177,14 @@ Answer with one JSON object only, no other text.`;
       const start = new Date(Date.now() + DAY).toISOString().slice(0, 10);
       const { text } = await askClaude({
         system: system(d, "Plan social media posts for the coming week."),
-        prompt: `Plan 5 posts for the 7 days starting ${start}: a mix of Instagram, Facebook and Google Business Profile.
+        prompt: `Plan 6 posts for the 7 days starting ${start}: a mix of Instagram, Facebook, TikTok and Google Business Profile, with at least one TikTok.
 Build them on the recent completed jobs and the services — what the problem was, what it feels like to ride, what was done.
-Return {"posts":[{"channel":"instagram|facebook|google","title":"short label","caption":"the post text","hashtags":["..."],"photoIdea":"what photo or clip Paul should take","suggestedDate":"YYYY-MM-DD"}]}`,
+TikTok posts are short vertical videos Paul films on his phone in the shop: give a videoPlan with a hook for the first two seconds, 3–6 shots he can film himself (the bike on the jig, the laser, the fix, a ride-off), the words to put on screen, and a length of 15–45 seconds. Keep its caption short.
+Return {"posts":[{"channel":"instagram|facebook|tiktok|google","title":"short label","caption":"the post text","hashtags":["..."],"photoIdea":"what photo or clip Paul should take","videoPlan":"TikTok only: hook, shots, on-screen text, length","suggestedDate":"YYYY-MM-DD"}]}`,
       });
       const { posts } = parseJsonReply<{ posts: any[] }>(text);
       for (const p of (posts || []).slice(0, 7)) {
-        const channel = ["instagram", "facebook", "google"].includes(p?.channel) ? p.channel : "instagram";
+        const channel = ["instagram", "facebook", "tiktok", "google"].includes(p?.channel) ? p.channel : "instagram";
         added.push(
           addDraft(d, {
             agent,
@@ -190,6 +193,7 @@ Return {"posts":[{"channel":"instagram|facebook|google","title":"short label","c
             body: clip(p?.caption, 2200),
             hashtags: Array.isArray(p?.hashtags) ? p.hashtags.map((h: unknown) => clip(h, 40)).filter(Boolean).slice(0, 15) : [],
             photoIdea: clip(p?.photoIdea, 300),
+            ...(channel === "tiktok" && clip(p?.videoPlan, 1500) ? { videoPlan: clip(p?.videoPlan, 1500) } : {}),
             suggestedDate: /^\d{4}-\d{2}-\d{2}$/.test(p?.suggestedDate) ? p.suggestedDate : undefined,
           })
         );

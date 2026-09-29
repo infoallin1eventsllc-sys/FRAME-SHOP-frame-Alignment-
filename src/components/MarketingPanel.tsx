@@ -16,6 +16,7 @@ interface Draft {
   body: string;
   hashtags?: string[];
   photoIdea?: string;
+  videoPlan?: string;
   suggestedDate?: string;
   sources?: { url: string; title: string }[];
   doneNote?: string;
@@ -37,7 +38,7 @@ interface DeskState {
 }
 
 const AGENT_INFO: Record<AgentId, { name: string; what: string; icon: React.ReactNode }> = {
-  content: { name: 'Content planner', what: "Drafts next week's Instagram, Facebook and Google posts from your recent jobs and services.", icon: <CalendarDays className="w-4 h-4" /> },
+  content: { name: 'Content planner', what: "Drafts next week's Instagram, Facebook, TikTok and Google posts from your recent jobs — TikToks come with a shot-by-shot plan to film.", icon: <CalendarDays className="w-4 h-4" /> },
   reply: { name: 'Inbox replies', what: 'Drafts a reply to every customer message still waiting.', icon: <Inbox className="w-4 h-4" /> },
   review_reply: { name: 'Review replies', what: 'Paste a review from Google or Facebook; get a reply in your voice.', icon: <Star className="w-4 h-4" /> },
   review_request: { name: 'Review requests', what: 'Drafts a "would you leave us a review?" email for each job finished in the last 30 days.', icon: <Megaphone className="w-4 h-4" /> },
@@ -285,7 +286,13 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
                 )}
               </div>
               {!!d.hashtags?.length && <p className="text-xs text-sky-300 break-words">{d.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}</p>}
-              {d.photoIdea && <p className="text-xs text-zinc-400"><strong className="text-zinc-300">Photo:</strong> {d.photoIdea}</p>}
+              {d.videoPlan && (
+                <div className="text-xs text-zinc-300 bg-zinc-900 border border-zinc-800 p-3 whitespace-pre-wrap" data-testid="video-plan">
+                  <strong className="block text-[10px] font-black uppercase tracking-widest text-pink-400 mb-1">Video to film</strong>
+                  {d.videoPlan}
+                </div>
+              )}
+              {d.photoIdea && !d.videoPlan && <p className="text-xs text-zinc-400"><strong className="text-zinc-300">Photo:</strong> {d.photoIdea}</p>}
               {!!d.sources?.length && (
                 <ul className="text-[11px] space-y-0.5">
                   {d.sources.map((s) => (

@@ -380,7 +380,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   className="w-full sm:w-72 bg-zinc-950 border border-zinc-800 text-zinc-100 rounded-none p-2.5 text-sm focus:outline-none focus:border-orange-600"
                 >
                   <option value="">Choose one…</option>
-                  {['Google search', 'Google Maps', 'Instagram', 'Facebook', 'Friend or another rider', 'Returning customer', 'Saw the shop', 'Other'].map((s) => (
+                  {['Google search', 'Google Maps', 'Instagram', 'Facebook', 'TikTok', 'Friend or another rider', 'Returning customer', 'Saw the shop', 'Other'].map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

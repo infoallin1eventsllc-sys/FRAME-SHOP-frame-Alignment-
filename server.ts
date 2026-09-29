@@ -653,7 +653,7 @@ app.get("/api/bookings", requireAdmin, (req, res) => {
 });
 
 /** The answers the booking form offers to "How did you hear about us?". Anything else is ignored. */
-const BOOKING_SOURCES = ["Google search", "Google Maps", "Instagram", "Facebook", "Friend or another rider", "Returning customer", "Saw the shop", "Other"];
+const BOOKING_SOURCES = ["Google search", "Google Maps", "Instagram", "Facebook", "TikTok", "Friend or another rider", "Returning customer", "Saw the shop", "Other"];
 
 // POST /api/bookings - Create new appointment and dispatch notification digest
 app.post("/api/bookings", bookingLimiter, (req, res) => {

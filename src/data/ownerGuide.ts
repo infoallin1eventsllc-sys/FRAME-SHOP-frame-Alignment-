@@ -176,9 +176,9 @@ export const OWNER_GUIDE: GuideSection[] = [
         steps: [
           'Marketing → "Run an assistant" → Content planner → Run.',
           'Open "To approve". Read each post, change anything, fill in any [ask Paul: …] gaps.',
-          'Press Approve, then Copy, paste it into Instagram, Facebook or Google, and press Mark posted.',
+          'Press Approve, then Copy, paste it into Instagram, Facebook, TikTok or Google, and press Mark posted.',
         ],
-        note: 'Posts are written from your finished jobs and your notes on them. The more you write in the tech notes, the better the posts get.',
+        note: 'Posts are written from your finished jobs and your notes on them. The more you write in the tech notes, the better the posts get. TikTok drafts come with a "Video to film" plan: film the shots in order on your phone, upright, then post it in the TikTok app with the caption.',
       },
       {
         task: 'Answer customer messages faster',

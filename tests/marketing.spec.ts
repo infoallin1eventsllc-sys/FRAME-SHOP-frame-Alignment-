@@ -45,6 +45,8 @@ test.describe('Marketing Desk', () => {
       return json({ posts: [
         { channel: 'instagram', title: 'Road Glide wobble fixed', caption: 'This Road Glide came in wobbling at 70. [ask Paul: before/after numbers]', hashtags: ['frameshop', 'roadglide'], photoIdea: 'The bike on the jig', suggestedDate: '2026-10-05' },
         { channel: 'google', title: 'Power train alignment', caption: 'Power Train Alignment, listed at $380.', hashtags: [] },
+        { channel: 'tiktok', title: 'Wobble fix in 20 seconds', caption: 'Wobble at 70? Not anymore.', hashtags: ['harleydavidson'], videoPlan: 'Hook: bike wobbling. Shots: jig, laser, fix, ride-off. 20s upright.' },
+        { channel: 'myspace', title: 'Unknown channel', caption: 'x', videoPlan: 'should be dropped' },
       ] });
     }
     if (sys.includes('Draft replies to messages')) {
@@ -130,8 +132,13 @@ test.describe('Marketing Desk', () => {
     for (const secret of ['Zelda', 'Uniquename', '8325550142', '832-555-0142', 'zelda@example.com']) expect(everything).not.toContain(secret);
 
     const drafts = (await res.json()).drafts;
-    expect(drafts).toHaveLength(2);
+    expect(drafts).toHaveLength(4);
     expect(drafts[0]).toMatchObject({ agent: 'content', channel: 'instagram', status: 'pending', suggestedDate: '2026-10-05' });
+    expect(call.body.messages[0].content).toMatch(/TikTok/);
+    expect(drafts[2]).toMatchObject({ channel: 'tiktok', videoPlan: 'Hook: bike wobbling. Shots: jig, laser, fix, ride-off. 20s upright.' });
+    // An unknown platform falls back to Instagram, and a video plan only rides along on TikTok posts.
+    expect(drafts[3].channel).toBe('instagram');
+    expect(drafts[3].videoPlan).toBeUndefined();
   });
 
   test('inbox replies: drafted, approved, then emailed to the customer — named only at sending', async ({ request }) => {
@@ -226,9 +233,12 @@ test.describe('Marketing Desk', () => {
   test('results come from real records, and "how did you hear about us" is counted', async ({ request }) => {
     const before = (await desk(request)).results;
     await booking(request, { source: 'Instagram' });
+    await booking(request, { source: 'TikTok' });
     await booking(request, { source: 'Made up channel' });
     const after = (await desk(request)).results;
-    expect(after.bookings30).toBe(before.bookings30 + 2);
+    expect(after.bookings30).toBe(before.bookings30 + 3);
+    const tt = (r: any) => r.sources90.find((s: any) => s.label === 'TikTok')?.n ?? 0;
+    expect(tt(after)).toBe(tt(before) + 1);
     const ig = (r: any) => r.sources90.find((s: any) => s.label === 'Instagram')?.n ?? 0;
     expect(ig(after)).toBe(ig(before) + 1);
     expect(after.sources90.find((s: any) => s.label === 'Made up channel')).toBeUndefined();
@@ -244,6 +254,7 @@ test.describe('Marketing Desk', () => {
     await page.getByRole('button', { name: 'Run an assistant' }).click();
     await page.getByTestId('marketing-panel').locator('div', { hasText: 'Content planner' }).getByRole('button', { name: 'Run' }).first().click();
     await expect(page.getByRole('status')).toContainText('new draft');
+    await expect(page.getByTestId('draft').filter({ hasText: 'Wobble fix in 20 seconds' }).first().getByTestId('video-plan')).toContainText('Shots: jig, laser');
     const card = page.getByTestId('draft').filter({ hasText: 'Road Glide wobble fixed' }).first();
     await expect(card).toContainText('Fill in the [ask Paul');
     await card.getByRole('button', { name: 'Approve' }).click();

@@ -141,7 +141,7 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
       status: 'pending',
       createdAt: new Date().toISOString(),
       ...(key ? { idempotencyKey: key } : {}),
-      ...(['Google search', 'Google Maps', 'Instagram', 'Facebook', 'Friend or another rider', 'Returning customer', 'Saw the shop', 'Other'].includes(b.source)
+      ...(['Google search', 'Google Maps', 'Instagram', 'Facebook', 'TikTok', 'Friend or another rider', 'Returning customer', 'Saw the shop', 'Other'].includes(b.source)
         ? { source: b.source }
         : {}),
       ...(b.marketingConsent === true
@@ -421,6 +421,10 @@ function demoMarketing(s: Store, m: string, seg: string[], body: any, ownerOnly:
       topics.forEach((topic, i) =>
         added.push(add({ agent, channel: ['instagram', 'facebook', 'google'][i % 3], title: topic, body: `${topic}. [ask Paul: what was wrong, and what it rides like now]`, hashtags: ['theframeshop', 'springtx'], photoIdea: 'The bike on the jig' }))
       );
+      added.push(add({
+        agent, channel: 'tiktok', title: `TikTok: ${topics[0]}`, body: `${topics[0]} [ask Paul: one line on the fix]`, hashtags: ['motorcycle', 'harleydavidson', 'springtx'],
+        videoPlan: 'Hook (0–2s): [ask Paul: the symptom, e.g. "Wobbles at 70?"] on screen over the bike rolling in.\nShots: 1) bike on the jig  2) laser line on the frame  3) the adjustment  4) ride-off.\nOn-screen text: the problem, then "fixed".\nLength: about 20 seconds, filmed upright.',
+      }));
     }
     if (agent === 'reply') {
       const covered = new Set(mk.drafts.filter((d) => d.agent === 'reply' && d.status !== 'discarded').map((d) => d.target?.messageId));
