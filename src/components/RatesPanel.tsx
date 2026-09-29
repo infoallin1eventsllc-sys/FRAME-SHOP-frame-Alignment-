@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import * as XLSX from 'xlsx';
+import { exportRatesToExcel } from '../utils/spreadsheets';
 import { Plus, Trash2, Save, FileSpreadsheet, Printer, Calculator, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { safeFetch } from '../utils/api';
 import { SHOP_INFO } from '../data/shopData';
@@ -18,26 +18,6 @@ export async function fetchRates(): Promise<ShopRates | null> {
 const money = (n: number) => `$${n.toFixed(2)}`;
 const numOrNull = (v: string): number | null => (v.trim() === '' ? null : Number(v));
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
-
-function exportRatesToExcel(rates: ShopRates) {
-  const rows: (string | number)[][] = [
-    [`${SHOP_INFO.name} — Rate Sheet`],
-    ['Exported', new Date().toLocaleDateString()],
-    [],
-    ['Labor rate ($/hr)', rates.laborRate ?? 'not set'],
-    ['Shop supplies (%)', rates.suppliesPct],
-    ['Sales tax (%)', rates.taxPct ?? 'not set'],
-    ['Overhead cost ($/hr)', rates.overheadPerHour ?? 'not set'],
-    [],
-    ['Service', 'Price ($)', 'Unit', 'Notes'],
-    ...rates.lines.map((l) => [l.name, l.price ?? '', l.unit, l.note]),
-  ];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 40 }, { wch: 12 }, { wch: 14 }, { wch: 50 }];
-  XLSX.utils.book_append_sheet(wb, ws, 'Rate Sheet');
-  XLSX.writeFile(wb, `TheFrameShop_Rates_${new Date().toISOString().split('T')[0]}.xlsx`);
-}
 
 /** Its own window, so the print is the rate sheet and not the whole portal. */
 function printRates(rates: ShopRates) {

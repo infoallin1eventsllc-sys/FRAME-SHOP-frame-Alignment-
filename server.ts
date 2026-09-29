@@ -315,7 +315,10 @@ app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
 });
 
 // In-memory + local JSON file persistence for appointment bookings
-const DATA_DIR = path.join(process.cwd(), "data");
+// Where bookings, invoices, messages and settings live. On a host this must be
+// a permanent disk (a Railway/Render volume) — anything else is wiped on every
+// deploy. DATA_DIR points at it; locally it defaults to ./data.
+const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), "data"));
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
 const VIDEOS_FILE = path.join(DATA_DIR, "videos.json");
 
@@ -1525,8 +1528,50 @@ app.get("/sitemap.xml", (req, res) => {
   );
 });
 
+/**
+ * Settings the live site cannot run safely without. Missing any of them used
+ * to mean a warning in a log nobody reads — and, for the secret, the customer
+ * list open to anyone. In production the server now refuses to start instead,
+ * and says exactly what to set.
+ */
+export function productionProblems(env: NodeJS.ProcessEnv): string[] {
+  const problems: string[] = [];
+  if (!env.SHOP_API_SECRET || env.SHOP_API_SECRET.length < 32 || /generate|random-hex|here/i.test(env.SHOP_API_SECRET)) {
+    problems.push(
+      "SHOP_API_SECRET is missing, shorter than 32 characters, or still the example text. Owner pages would be open to anyone.\n" +
+      "      Generate one: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
+  }
+  if (!env.SHOP_OWNER_PIN || env.SHOP_OWNER_PIN === "1234") {
+    problems.push("SHOP_OWNER_PIN is missing or still the demo PIN 1234. Set Paul's own PIN.");
+  }
+  if (!/^https:\/\/[^\s/]+/.test(env.APP_URL || "")) {
+    problems.push(
+      "APP_URL must be the site's https:// address (e.g. https://theframeshop.com).\n" +
+      "      Google, link previews and every unsubscribe link use it."
+    );
+  }
+  if (!env.DATA_DIR) {
+    problems.push(
+      "DATA_DIR is not set. Point it at the host's permanent disk (e.g. a volume mounted at /data).\n" +
+      "      Without it, bookings, invoices and messages are wiped on every deploy."
+    );
+  }
+  return problems;
+}
+
 // Start Express + Vite Server
 async function start() {
+  if (process.env.NODE_ENV === "production") {
+    const problems = productionProblems(process.env);
+    if (problems.length) {
+      console.error(
+        "\n[!] The Frame Shop will not start until these are set on the host:\n\n" +
+        problems.map((p) => `  - ${p}`).join("\n\n") + "\n"
+      );
+      process.exit(1);
+    }
+  }
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: {

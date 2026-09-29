@@ -306,4 +306,42 @@ test.describe('Marketing Desk', () => {
     await page.getByRole('button', { name: /Sent & posted/ }).click();
     await expect(page.getByTestId('marketing-panel')).toContainText('Road Glide wobble fixed');
   });
+
+  test('in the portal: preview a post on a phone screen with a clip from this device, before approving', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('footer button:has-text("Owner Login")').click();
+    await page.getByPlaceholder('Enter PIN').fill('1234');
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: /✨ Marketing/ }).click();
+    await page.getByRole('button', { name: 'Run an assistant' }).click();
+    await page.getByTestId('marketing-panel').locator('div', { hasText: 'Content planner' }).getByRole('button', { name: 'Run' }).first().click();
+    await expect(page.getByRole('status')).toContainText('new draft');
+
+    // TikTok: a phone-shaped frame, the upright clip Paul picks, the caption over it.
+    const tiktok = page.getByTestId('draft').filter({ hasText: 'Wobble fix in 20 seconds' }).first();
+    await tiktok.getByRole('button', { name: 'Preview on phone' }).click();
+    const preview = tiktok.getByTestId('post-preview');
+    await expect(preview.getByRole('img', { name: 'tiktok preview' })).toContainText('Wobble at 70? Not anymore.');
+    await expect(preview).toContainText('#harleydavidson');
+    await preview.getByLabel('Choose a photo or video for this post').setInputFiles('tests/fixtures/upright.webm');
+    await expect(preview.locator('video')).toHaveAttribute('src', /^blob:/);
+    await expect.poll(() => preview.locator('video').evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
+
+    // Editing the text shows in the preview straight away — before it is saved.
+    await tiktok.getByLabel(/Text — edit freely/).fill('Wobble at 75? Fixed on the jig.');
+    await expect(preview).toContainText('Wobble at 75? Fixed on the jig.');
+
+    // Nothing was uploaded: the draft on the server has no media, only the words.
+    const drafts = (await (await page.request.get('/api/marketing')).json()).drafts as any[];
+    expect(JSON.stringify(drafts)).not.toContain('blob:');
+
+    // Too long for Google: said here, not discovered at posting time.
+    const google = page.getByTestId('draft').filter({ hasText: 'Power train alignment' }).first();
+    await google.getByRole('button', { name: 'Preview on phone' }).click();
+    await google.getByLabel(/Text — edit freely/).fill('x'.repeat(1501));
+    await expect(google.getByTestId('preview-warning')).toContainText('Google allows 1,500');
+
+    // Email drafts have no phone preview.
+    await expect(page.getByTestId('draft').filter({ hasText: /email/i }).getByRole('button', { name: 'Preview on phone' })).toHaveCount(0);
+  });
 });

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Sparkles, Send, Copy, Check, Trash2, RefreshCw, Megaphone, Inbox, Star, MailPlus, Radar, CalendarDays, Settings, BarChart3, ExternalLink } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Sparkles, Send, Copy, Check, Smartphone, Trash2, RefreshCw, Megaphone, Inbox, Star, MailPlus, Radar, CalendarDays, Settings, BarChart3, ExternalLink } from 'lucide-react';
 import { safeFetch } from '../utils/api';
+import { PostPreview, PREVIEW_CHANNELS, type PickedMedia, type PreviewChannel } from './PostPreview';
 
 type AgentId = 'content' | 'reply' | 'review_reply' | 'review_request' | 'campaign' | 'radar';
 
@@ -64,6 +65,19 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
   const [review, setReview] = useState({ text: '', rating: '5', reviewer: '' });
   const [goal, setGoal] = useState('');
   const [settings, setSettings] = useState<DeskState['settings'] | null>(null);
+  // Phone previews: which are open, the text as Paul types it, and the photo
+  // or clip he picked for each draft (kept in this browser only).
+  const [previewing, setPreviewing] = useState<Record<string, boolean>>({});
+  const [liveText, setLiveText] = useState<Record<string, string>>({});
+  const [media, setMedia] = useState<Record<string, PickedMedia | undefined>>({});
+  const mediaRef = useRef(media);
+  mediaRef.current = media;
+  useEffect(() => () => (Object.values(mediaRef.current) as (PickedMedia | undefined)[]).forEach((m) => m && URL.revokeObjectURL(m.url)), []);
+  const pickMedia = (id: string, m: PickedMedia | null) => {
+    const old = mediaRef.current[id];
+    if (old) URL.revokeObjectURL(old.url);
+    setMedia((prev) => ({ ...prev, [id]: m ?? undefined }));
+  };
 
   const say = (kind: 'ok' | 'error', text: string) => setNotice({ kind, text });
   const errorOf = async (res: Response, fallback: string) => (await res.json().catch(() => ({})))?.error || `${fallback} (error ${res.status})`;
@@ -304,6 +318,7 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
                   id={`body-${d.id}`}
                   defaultValue={d.body}
                   rows={Math.min(14, Math.max(4, d.body.split('\n').length + 1))}
+                  onChange={(e) => previewing[d.id] && setLiveText((prev) => ({ ...prev, [d.id]: e.target.value }))}
                   onBlur={(e) => e.target.value !== d.body && patch(d.id, { body: e.target.value })}
                   className={`${input} whitespace-pre-wrap`}
                 />
@@ -319,6 +334,34 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
                 </div>
               )}
               {d.photoIdea && !d.videoPlan && <p className="text-xs text-zinc-400"><strong className="text-zinc-300">Photo:</strong> {d.photoIdea}</p>}
+              {PREVIEW_CHANNELS.includes(d.channel) && (
+                <div>
+                  <button
+                    type="button"
+                    aria-expanded={!!previewing[d.id]}
+                    onClick={() => {
+                      const el = document.getElementById(`body-${d.id}`) as HTMLTextAreaElement | null;
+                      setLiveText((prev) => ({ ...prev, [d.id]: el?.value ?? d.body }));
+                      setPreviewing((prev) => ({ ...prev, [d.id]: !prev[d.id] }));
+                    }}
+                    className={`${btn} bg-zinc-900 border border-zinc-700 text-zinc-200 hover:border-orange-600`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" /> {previewing[d.id] ? 'Hide preview' : 'Preview on phone'}
+                  </button>
+                  {previewing[d.id] && (
+                    <div className="mt-3">
+                      <PostPreview
+                        channel={d.channel as PreviewChannel}
+                        text={liveText[d.id] ?? d.body}
+                        hashtags={d.hashtags ?? []}
+                        media={media[d.id] ?? null}
+                        onPick={(m) => pickMedia(d.id, m)}
+                        mediaHint={d.photoIdea}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               {!!d.sources?.length && (
                 <ul className="text-[11px] space-y-0.5">
                   {d.sources.map((s) => (

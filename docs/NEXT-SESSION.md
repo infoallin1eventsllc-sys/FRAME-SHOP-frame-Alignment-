@@ -11,6 +11,7 @@ Last updated 29 September 2026. Start here next session.
 | Clickable demo | https://claude.ai/artifact/6GNnNSJjNXPWXdLApS9NM6 — owner PIN **1234** (demo only) |
 | Paul's instructions | in the portal: "How Do I…?" (`src/data/ownerGuide.ts`) |
 | Paul's go-live steps | `docs/PAUL-GO-LIVE-STEPS.md` |
+| How to deploy | `docs/DEPLOY.md` |
 | Settings reference | `.env.example` |
 | Earlier Supabase marketing kit + per-client provisioning | `handoff/` (see its README) |
 
@@ -45,7 +46,7 @@ misses a change — if a test sees old behaviour, restart the server.
 
 - 111 tests passing; production build and a production smoke test clean.
 - Marketing tab shows a count of drafts waiting; Paul gets a morning email (after 7am shop time, only when something is waiting) once email is connected.
-- `npm audit`: `qs` fixed. **`xlsx` still flagged (high)** — see below.
+- `npm audit`: clean (0 vulnerabilities).
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
   Resend or Anthropic.
 
@@ -70,14 +71,9 @@ misses a change — if a test sees old behaviour, restart the server.
 
 ## Next up
 
-1. **Replace `xlsx`.** The npm package is abandoned; SheetJS publishes fixed
-   versions only at cdn.sheetjs.com, which this cloud environment's network
-   blocks. From a normal machine:
-   `npm install https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, then run
-   the tests. Risk meanwhile is low: the site only *writes* spreadsheets; the
-   flaws are in *reading* them.
-2. **Deploy** somewhere with a persistent disk (Railway/Render with a volume),
-   or move storage to a database first. Everything is JSON files under `data/`.
+1. ~~Replace `xlsx`~~ — done 29 Sep: now `write-excel-file`; `npm audit` is clean.
+2. **Deploy** — follow `docs/DEPLOY.md`. The production server refuses to start
+   without `DATA_DIR` (the volume), `APP_URL`, a real PIN and `SHOP_API_SECRET`.
 3. **Connect the services, on accounts in the shop's name:**
    - `SHOP_API_SECRET` and a real `SHOP_OWNER_PIN` — **required**, owner routes are open without it
    - Anthropic (`ANTHROPIC_API_KEY`) for the Marketing Desk, with a monthly spend limit
