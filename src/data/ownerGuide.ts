@@ -209,6 +209,15 @@ export const OWNER_GUIDE: GuideSection[] = [
         note: 'Every morning it drafts replies and review requests; every Monday, the week\'s posts and a market brief. Drafts only — nothing goes out until you approve it.',
       },
       {
+        task: 'Know when something is waiting for you',
+        steps: [
+          'The Marketing tab shows a count, e.g. "Marketing (5 to approve)".',
+          'Each morning after 7am, if drafts are waiting, you get an email saying how many and what they are.',
+          'To change where it goes, or turn it off: Marketing → Settings → Morning email. "Send me a test now" checks it arrives.',
+        ],
+        note: 'No email on days when nothing is waiting.',
+      },
+      {
         task: 'See what is working',
         steps: ['Marketing → Results.'],
         note: '"Where customers heard about you" comes from the new question on the booking form, so it fills in over the first few weeks.',

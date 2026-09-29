@@ -53,6 +53,12 @@ interface Settings {
   autopilot: boolean;
   lastDailyRun?: string;
   lastWeeklyRun?: string;
+  /** Email Paul each morning when drafts are waiting for him. On unless he turns it off. */
+  digestEnabled?: boolean;
+  /** Where that email goes. Defaults to the shop's own address. */
+  digestTo?: string;
+  /** The shop-time date the last morning email went out, so it goes once a day at most. */
+  lastDigest?: string;
   /** Signs unsubscribe links, so nobody can unsubscribe someone else. */
   unsubscribeKey: string;
 }
@@ -92,6 +98,25 @@ const scrub = (s: string) =>
 const firstName = (name: string) => (name || "").trim().split(/\s+/)[0] || "there";
 const DAY = 86_400_000;
 
+/** The date and hour in Spring, Texas — the schedule runs on shop time, not the server's. */
+export function shopClock(at = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hour12: false, weekday: "short" })
+      .formatToParts(at)
+      .map((p) => [p.type, p.value])
+  );
+  return { today: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) % 24, weekday: String(parts.weekday) };
+}
+
+/**
+ * Whether the morning email is due: switched on, email connected, something
+ * actually waiting, after 7am shop time, and not already sent today.
+ */
+export function digestDue(opts: { enabled: boolean; emailOn: boolean; waiting: number; lastDigest?: string; at?: Date }) {
+  const { today, hour } = shopClock(opts.at);
+  return opts.enabled && opts.emailOn && opts.waiting > 0 && hour >= 7 && opts.lastDigest !== today;
+}
+
 export function registerMarketing(app: express.Express, deps: MarketingDeps) {
   const FILE = path.join(deps.dataDir, "marketing.json");
 
@@ -112,6 +137,12 @@ export function registerMarketing(app: express.Express, deps: MarketingDeps) {
     d.drafts = d.drafts.slice(0, 500);
     d.runs = d.runs.slice(0, 100);
     writeJsonAtomic(FILE, d, { backups: 10 });
+  };
+
+  /** Settings as the portal sees them: defaults filled in, the signing key left out. */
+  const publicSettings = (d: MarketingData) => {
+    const { unsubscribeKey: _k, ...rest } = d.settings;
+    return { ...rest, digestEnabled: rest.digestEnabled !== false, digestTo: rest.digestTo || deps.shop.email };
   };
 
   const unsubToken = (d: MarketingData, email: string) =>
@@ -400,7 +431,7 @@ Return {"summary":"two or three sentences","items":[{"headline":"...","detail":"
   app.get("/api/marketing", deps.requireAdmin, (_req, res) => {
     try {
       const d = load();
-      const { unsubscribeKey: _k, ...settings } = d.settings;
+      const settings = publicSettings(d);
       res.json({
         connected: aiEnabled(),
         emailConnected: emailEnabled(),
@@ -421,15 +452,18 @@ Return {"summary":"two or three sentences","items":[{"headline":"...","detail":"
     const body = req.body || {};
     const url = clip(body.googleReviewUrl, 500);
     if (url && !/^https:\/\/\S+$/.test(url)) return res.status(400).json({ error: "The Google review link should start with https://" });
+    const digestTo = clip(body.digestTo, 200);
+    if (digestTo && !looksLikeEmail(digestTo)) return res.status(400).json({ error: "The morning email address doesn't look right." });
     try {
       const d = load();
       d.settings.brandVoice = clip(body.brandVoice, 2000) || DEFAULT_VOICE;
       d.settings.googleReviewUrl = url;
       d.settings.competitors = clip(body.competitors, 1000);
       d.settings.autopilot = body.autopilot === true;
+      if (typeof body.digestEnabled === "boolean") d.settings.digestEnabled = body.digestEnabled;
+      if (typeof body.digestTo === "string") d.settings.digestTo = digestTo || deps.shop.email;
       save(d);
-      const { unsubscribeKey: _k, ...settings } = d.settings;
-      res.json({ settings });
+      res.json({ settings: publicSettings(d) });
     } catch (err) {
       logEvent("error", "marketing.settings.failed", errorFields(err));
       res.status(500).json({ error: "Settings could not be saved." });
@@ -575,6 +609,110 @@ Return {"summary":"two or three sentences","items":[{"headline":"...","detail":"
     }
   });
 
+  /* ------------------------------------------------------------------------
+   * Telling Paul there is something to look at.
+   * ---------------------------------------------------------------------- */
+  const waitingOf = (d: MarketingData) => ({
+    toApprove: d.drafts.filter((x) => x.status === "pending").length,
+    approvedNotDone: d.drafts.filter((x) => x.status === "approved").length,
+  });
+
+  /** For the count on the portal's Marketing tab. Cheap: no results, no drafts. */
+  app.get("/api/marketing/summary", deps.requireAdmin, (_req, res) => {
+    try {
+      res.json(waitingOf(load()));
+    } catch (err) {
+      logEvent("error", "marketing.summary.failed", errorFields(err));
+      res.status(500).json({ error: "Could not count the drafts." });
+    }
+  });
+
+  const AGENT_NAMES: Record<AgentId, string> = {
+    content: "Social posts",
+    reply: "Replies to customer messages",
+    review_reply: "Replies to reviews",
+    review_request: "Review requests",
+    campaign: "Email campaigns",
+    radar: "Market briefs",
+  };
+
+  async function sendDigest(d: MarketingData): Promise<{ to: string; waiting: number }> {
+    const to = d.settings.digestTo || deps.shop.email;
+    const pending = d.drafts.filter((x) => x.status === "pending");
+    const { approvedNotDone } = waitingOf(d);
+    const site = /^https?:\/\/\S+$/.test(process.env.APP_URL || "") ? process.env.APP_URL!.replace(/\/+$/, "") : "";
+    const byAgent = AGENTS.map((a) => [a, pending.filter((x) => x.agent === a)] as const).filter(([, list]) => list.length);
+    const lines = [
+      `Good morning ${deps.shop.owner.split(" ")[0]},`,
+      "",
+      pending.length
+        ? `${pending.length} marketing draft${pending.length === 1 ? " is" : "s are"} waiting for you to read and approve:`
+        : "Nothing is waiting for your approval right now.",
+      "",
+      ...byAgent.flatMap(([a, list]) => [
+        `${AGENT_NAMES[a]} (${list.length})`,
+        ...list.slice(0, 5).map((x) => `  - ${x.title}${x.suggestedDate ? ` (for ${x.suggestedDate})` : ""}`),
+        ...(list.length > 5 ? [`  - and ${list.length - 5} more`] : []),
+      ]),
+      ...(approvedNotDone ? ["", `${approvedNotDone} approved but not yet posted or sent.`] : []),
+      "",
+      site ? `Open your website: ${site}` : "Open your website,",
+      "then tap Owner Login at the bottom of the page, then Marketing.",
+      "",
+      "Nothing is posted or sent until you approve it.",
+      "",
+      "To stop these emails: Marketing, then Settings, then untick the morning email.",
+    ];
+    await sendEmail({
+      to,
+      replyTo: deps.shop.email,
+      subject: pending.length
+        ? `${pending.length} marketing draft${pending.length === 1 ? "" : "s"} waiting for you - ${deps.shop.name}`
+        : `Marketing: nothing waiting - ${deps.shop.name}`,
+      text: lines.join("\n"),
+    });
+    logEvent("info", "marketing.digest.sent", { waiting: pending.length });
+    return { to, waiting: pending.length };
+  }
+
+  /** "Send me a test now" in Marketing settings — goes even if nothing is waiting. */
+  app.post("/api/marketing/digest/test", deps.requireAdmin, async (_req, res) => {
+    if (!emailEnabled()) {
+      return res.status(503).json({ error: "Email sending is not switched on yet, so the morning email can't go out. It will start once email is connected." });
+    }
+    try {
+      const { to, waiting } = await sendDigest(load());
+      res.json({ message: `Test sent to ${to} (${waiting} waiting). Check that inbox, including spam.` });
+    } catch (err) {
+      logEvent("error", "marketing.digest.test_failed", errorFields(err));
+      res.status(502).json({ error: "The test email did not send. Try again in a minute." });
+    }
+  });
+
+  async function digestTick() {
+    let d: MarketingData;
+    try {
+      d = load();
+    } catch {
+      return;
+    }
+    const due = digestDue({
+      enabled: d.settings.digestEnabled !== false,
+      emailOn: emailEnabled(),
+      waiting: waitingOf(d).toApprove,
+      lastDigest: d.settings.lastDigest,
+    });
+    if (!due) return;
+    // Recorded before sending: a failing email service means one miss, not a retry every half hour.
+    d.settings.lastDigest = shopClock().today;
+    save(d);
+    try {
+      await sendDigest(d);
+    } catch (err) {
+      logEvent("error", "marketing.digest.failed", errorFields(err));
+    }
+  }
+
   /** The link in every campaign email. Public, but only works with its signature. */
   app.get("/api/unsubscribe", deps.limiter, (req, res) => {
     const email = String(req.query.e || "").toLowerCase();
@@ -621,16 +759,11 @@ Return {"summary":"two or three sentences","items":[{"headline":"...","detail":"
       return;
     }
     if (!d.settings.autopilot) return;
-    const parts = Object.fromEntries(
-      new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hour12: false, weekday: "short" })
-        .formatToParts(new Date())
-        .map((p) => [p.type, p.value])
-    );
-    const today = `${parts.year}-${parts.month}-${parts.day}`;
-    if (Number(parts.hour) < 6) return;
+    const { today, hour, weekday } = shopClock();
+    if (hour < 6) return;
     const jobs: AgentId[] = [];
     if (d.settings.lastDailyRun !== today) jobs.push("reply", ...(d.settings.googleReviewUrl ? (["review_request"] as AgentId[]) : []));
-    if (parts.weekday === "Mon" && d.settings.lastWeeklyRun !== today) jobs.push("content", "radar");
+    if (weekday === "Mon" && d.settings.lastWeeklyRun !== today) jobs.push("content", "radar");
     if (!jobs.length) return;
     // Record the day first, so a failure does not retry every half hour.
     if (d.settings.lastDailyRun !== today) d.settings.lastDailyRun = today;
@@ -645,6 +778,7 @@ Return {"summary":"two or three sentences","items":[{"headline":"...","detail":"
       }
     }
   }
-  const timer = setInterval(() => void autopilotTick(), 30 * 60_000);
+  // Autopilot drafts from 6am; the morning email follows from 7am, so it includes them.
+  const timer = setInterval(() => void autopilotTick().finally(() => digestTick()), 30 * 60_000);
   timer.unref();
 }

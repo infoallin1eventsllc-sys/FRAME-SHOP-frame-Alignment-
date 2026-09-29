@@ -369,6 +369,16 @@ function demoMarketing(s: Store, m: string, seg: string[], body: any, ownerOnly:
   const bike = (b: any) => [b.bikeYear, b.bikeMake, b.bikeModel].filter(Boolean).join(' ');
   const first = (n: string) => (n || '').trim().split(/\s+/)[0] || 'there';
 
+  if (seg[2] === 'summary' && m === 'GET') {
+    return json(200, {
+      toApprove: mk.drafts.filter((d) => d.status === 'pending').length,
+      approvedNotDone: mk.drafts.filter((d) => d.status === 'approved').length,
+    });
+  }
+  if (seg[2] === 'digest' && seg[3] === 'test' && m === 'POST') {
+    return json(503, { error: 'Demo mode: the morning email goes out on the live site, once email sending is switched on.' });
+  }
+
   if (seg[2] === undefined && m === 'GET') {
     const t = Date.now();
     const within = (iso: string, days: number, from = 0) => t - Date.parse(iso) < days * 86400000 && t - Date.parse(iso) >= from * 86400000;
@@ -386,7 +396,7 @@ function demoMarketing(s: Store, m: string, seg: string[], body: any, ownerOnly:
     const done = mk.drafts.filter((d) => d.status === 'done');
     return json(200, {
       connected: true, emailConnected: false, model: 'demo', usage: { used: mk.runs.length, cap: 60 },
-      settings: mk.settings,
+      settings: { digestEnabled: true, digestTo: 'theframeshop13@gmail.com', ...mk.settings },
       drafts: mk.drafts.filter((d) => d.status !== 'discarded'),
       runs: mk.runs.slice(0, 20),
       results: {
@@ -406,7 +416,12 @@ function demoMarketing(s: Store, m: string, seg: string[], body: any, ownerOnly:
   if (seg[2] === 'settings' && m === 'PUT') {
     const url = String(body?.googleReviewUrl || '').trim();
     if (url && !/^https:\/\/\S+$/.test(url)) return json(400, { error: 'The Google review link should start with https://' });
-    mk.settings = { brandVoice: String(body?.brandVoice || mk.settings.brandVoice), googleReviewUrl: url, competitors: String(body?.competitors || ''), autopilot: body?.autopilot === true };
+    const digestTo = String(body?.digestTo || '').trim();
+    if (digestTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(digestTo)) return json(400, { error: "The morning email address doesn't look right." });
+    mk.settings = {
+      brandVoice: String(body?.brandVoice || mk.settings.brandVoice), googleReviewUrl: url, competitors: String(body?.competitors || ''), autopilot: body?.autopilot === true,
+      digestEnabled: body?.digestEnabled !== false, digestTo: digestTo || 'theframeshop13@gmail.com',
+    };
     save(s);
     return json(200, { settings: mk.settings });
   }

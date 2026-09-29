@@ -22,7 +22,7 @@ npm run build               # production build (dist/)
 npm run build:preview       # the single-file demo page -> preview.html
 ```
 
-Tests run against a server you start yourself. For all 99 to run (none
+Tests run against a server you start yourself. For all 101 to run (none
 skipped), start it with the stand-ins, then run the tests with the matching
 variables:
 
@@ -42,7 +42,8 @@ misses a change — if a test sees old behaviour, restart the server.
 
 ## State at the end of 29 Sep
 
-- 99 tests passing; production build and a production smoke test clean.
+- 101 tests passing; production build and a production smoke test clean.
+- Marketing tab shows a count of drafts waiting; Paul gets a morning email (after 7am shop time, only when something is waiting) once email is connected.
 - `npm audit`: `qs` fixed. **`xlsx` still flagged (high)** — see below.
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
   Resend or Anthropic.

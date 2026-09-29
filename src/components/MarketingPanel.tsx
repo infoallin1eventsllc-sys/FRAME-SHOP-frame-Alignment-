@@ -27,7 +27,10 @@ interface DeskState {
   emailConnected: boolean;
   model?: string;
   usage: { used: number; cap: number };
-  settings: { brandVoice: string; googleReviewUrl: string; competitors: string; autopilot: boolean; lastDailyRun?: string; lastWeeklyRun?: string };
+  settings: {
+    brandVoice: string; googleReviewUrl: string; competitors: string; autopilot: boolean; lastDailyRun?: string; lastWeeklyRun?: string;
+    digestEnabled: boolean; digestTo: string; lastDigest?: string;
+  };
   drafts: Draft[];
   runs: { agent: AgentId; at: string; ok: boolean; drafts: number; error?: string }[];
   results: {
@@ -96,6 +99,7 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
       if (agent === 'review_reply') setReview({ text: '', rating: '5', reviewer: '' });
       if (agent === 'campaign') setGoal('');
       await load();
+      onDataChanged?.();
     } catch {
       say('error', 'The assistant could not be reached. Try again in a minute.');
     } finally {
@@ -114,6 +118,7 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
       return false;
     }
     await load();
+    onDataChanged?.();
     return true;
   };
 
@@ -153,6 +158,27 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
       say('ok', 'Copied. Paste it where it is going, then press Mark posted.');
     } catch {
       say('error', 'Your browser would not copy it. Select the text and copy it by hand.');
+    }
+  };
+
+  const testDigest = async () => {
+    setBusy('digest');
+    try {
+      // Save first, so the test goes to the address on screen.
+      const saved = await safeFetch('/api/marketing/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (!saved.ok) return say('error', await errorOf(saved, 'Settings did not save'));
+      setSettings((await saved.json()).settings);
+      const res = await safeFetch('/api/marketing/digest/test', { method: 'POST' });
+      if (!res.ok) return say('error', await errorOf(res, 'The test email did not send'));
+      say('ok', (await res.json()).message);
+    } catch {
+      say('error', 'The test email did not send: the website could not be reached.');
+    } finally {
+      setBusy('');
     }
   };
 
@@ -486,6 +512,26 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
               <span className="block text-[11px] text-zinc-500">Drafts only. Nothing is sent or posted without your approval.</span>
             </span>
           </label>
+          <div className="border-t border-zinc-800 pt-4 space-y-2" data-testid="digest-settings">
+            <label htmlFor="mk-digest" className="flex items-start gap-2 text-sm text-zinc-200 cursor-pointer">
+              <input id="mk-digest" type="checkbox" checked={settings.digestEnabled} onChange={(e) => setSettings({ ...settings, digestEnabled: e.target.checked })} className="mt-1 w-4 h-4 accent-orange-600" />
+              <span>
+                <strong>Morning email</strong> — when drafts are waiting, email me each morning (after 7am) saying how many and what they are.
+                <span className="block text-[11px] text-zinc-500">Only on days when something is waiting.{state.emailConnected ? '' : ' Starts once email sending is switched on.'}</span>
+              </span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+              <div>
+                <label htmlFor="mk-digest-to" className="block text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-1">Send it to</label>
+                <input id="mk-digest-to" type="email" value={settings.digestTo} onChange={(e) => setSettings({ ...settings, digestTo: e.target.value })} className={input} />
+              </div>
+              <button type="button" onClick={testDigest} disabled={busy === 'digest' || !state.emailConnected} className={`${btn} bg-zinc-800 hover:bg-zinc-700 text-zinc-100`}
+                title={state.emailConnected ? 'Saves these settings, then sends the morning email now' : 'Email sending is not switched on yet'}>
+                <Send className="w-3.5 h-3.5" /> {busy === 'digest' ? 'Sending…' : 'Send me a test now'}
+              </button>
+            </div>
+            {settings.lastDigest && <p className="text-[11px] text-zinc-500">Last morning email: {settings.lastDigest}.</p>}
+          </div>
           <button type="button" onClick={saveSettings} disabled={busy === 'settings'} className={`${btn} bg-orange-600 hover:bg-orange-500 text-white`}>
             {busy === 'settings' ? 'Saving…' : 'Save settings'}
           </button>

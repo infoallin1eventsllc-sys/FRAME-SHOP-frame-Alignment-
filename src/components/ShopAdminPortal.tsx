@@ -218,6 +218,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   // Navigation Tab State
   const [activeMainTab, setActiveMainTab] = useState<"bookings" | "messages" | "marketing" | "pricematrix" | "media" | "help">("bookings");
   const [unhandledMessages, setUnhandledMessages] = useState(0);
+  // Marketing drafts waiting for Paul, shown on the tab so he sees them without opening it.
+  const [draftsWaiting, setDraftsWaiting] = useState(0);
 
   /**
    * Opens the guide as its own plain page so Paul can print it or save it as a
@@ -812,6 +814,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       // The messages tab carries a count, so Paul sees new ones without opening it.
       const msgs = await fetchMessages();
       if (msgs) setUnhandledMessages(msgs.unhandled);
+      const mk = await safeFetch("/api/marketing/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (mk) setDraftsWaiting(mk.toApprove);
     } catch {
       setPortalError("Could not reach the website to load bookings. Check your connection and press Refresh.");
     } finally {
@@ -1201,10 +1205,12 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
                   className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                     activeMainTab === "marketing"
                       ? "bg-orange-600 text-white shadow"
-                      : "bg-zinc-950 text-orange-300 hover:text-white border border-orange-600/50"
+                      : draftsWaiting > 0
+                        ? "bg-zinc-950 text-orange-200 hover:text-white border border-orange-500"
+                        : "bg-zinc-950 text-orange-300 hover:text-white border border-orange-600/50"
                   }`}
                 >
-                  ✨ Marketing
+                  ✨ Marketing{draftsWaiting > 0 ? ` (${draftsWaiting} to approve)` : ""}
                 </button>
 
                 <button

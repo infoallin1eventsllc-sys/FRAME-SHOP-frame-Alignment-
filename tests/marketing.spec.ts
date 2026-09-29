@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { askClaude, AiUnavailable, parseJsonReply } from '../ai';
+import { digestDue } from '../marketing';
 
 /**
  * The Marketing Desk. Needs the server started with
@@ -25,6 +26,23 @@ test.describe('Assistant connection', () => {
   test('reads the JSON answer even when it is wrapped in prose or a code fence', () => {
     expect(parseJsonReply<{ a: number }>('Here you go:\n```json\n{"a": 1}\n```')).toEqual({ a: 1 });
     expect(parseJsonReply<{ a: number }>('{"a": 2}')).toEqual({ a: 2 });
+  });
+});
+
+test.describe('Morning email timing', () => {
+  // 29 Sep 2026: 11:30 UTC is 6:30am in Spring, TX (CDT); 13:00 UTC is 8:00am.
+  const early = new Date('2026-09-29T11:30:00Z');
+  const morning = new Date('2026-09-29T13:00:00Z');
+  const base = { enabled: true, emailOn: true, waiting: 3, at: morning };
+
+  test('goes once a day, after 7am shop time, only when something is waiting', () => {
+    expect(digestDue(base)).toBe(true);
+    expect(digestDue({ ...base, at: early })).toBe(false);
+    expect(digestDue({ ...base, lastDigest: '2026-09-29' })).toBe(false);
+    expect(digestDue({ ...base, lastDigest: '2026-09-28' })).toBe(true);
+    expect(digestDue({ ...base, waiting: 0 })).toBe(false);
+    expect(digestDue({ ...base, enabled: false })).toBe(false);
+    expect(digestDue({ ...base, emailOn: false })).toBe(false);
   });
 });
 
@@ -244,6 +262,30 @@ test.describe('Marketing Desk', () => {
     expect(after.sources90.find((s: any) => s.label === 'Made up channel')).toBeUndefined();
   });
 
+  test('Paul is told what is waiting: a count for the tab, and a morning email', async ({ request }) => {
+    const before = (await (await request.get('/api/marketing/summary')).json()).toApprove;
+    const { drafts } = await (await request.post('/api/marketing/run/content')).json();
+    expect((await (await request.get('/api/marketing/summary')).json()).toApprove).toBe(before + drafts.length);
+
+    expect((await request.put('/api/marketing/settings', { data: { digestTo: 'not an address' } })).status()).toBe(400);
+    await request.put('/api/marketing/settings', { data: { digestEnabled: true, digestTo: '' } });
+    const res = await request.post('/api/marketing/digest/test');
+    expect(res.status()).toBe(200);
+    const mail = sent.at(-1);
+    expect(mail.to).toEqual(['theframeshop13@gmail.com']); // the shop's own address by default
+    expect(mail.subject).toMatch(/marketing drafts? waiting for you/);
+    expect(mail.text).toMatch(/Social posts \(\d+\)/);
+    expect(mail.text).toContain('Road Glide wobble fixed');
+    expect(mail.text).toContain('Owner Login');
+    expect(mail.text).toContain('Nothing is posted or sent until you approve it.');
+
+    await request.put('/api/marketing/settings', { data: { digestEnabled: true, digestTo: 'paul@example.com' } });
+    await request.post('/api/marketing/digest/test');
+    expect(sent.at(-1).to).toEqual(['paul@example.com']);
+    const s = (await (await request.get('/api/marketing')).json()).settings;
+    expect(s).toMatchObject({ digestEnabled: true, digestTo: 'paul@example.com' });
+  });
+
   test('in the portal: run an assistant, edit, approve and mark posted', async ({ page }) => {
     await page.goto('/');
     await page.locator('footer button:has-text("Owner Login")').click();
@@ -254,6 +296,8 @@ test.describe('Marketing Desk', () => {
     await page.getByRole('button', { name: 'Run an assistant' }).click();
     await page.getByTestId('marketing-panel').locator('div', { hasText: 'Content planner' }).getByRole('button', { name: 'Run' }).first().click();
     await expect(page.getByRole('status')).toContainText('new draft');
+    // The tab itself now says how many are waiting.
+    await expect(page.getByRole('button', { name: /✨ Marketing \(\d+ to approve\)/ })).toBeVisible();
     await expect(page.getByTestId('draft').filter({ hasText: 'Wobble fix in 20 seconds' }).first().getByTestId('video-plan')).toContainText('Shots: jig, laser');
     const card = page.getByTestId('draft').filter({ hasText: 'Road Glide wobble fixed' }).first();
     await expect(card).toContainText('Fill in the [ask Paul');
