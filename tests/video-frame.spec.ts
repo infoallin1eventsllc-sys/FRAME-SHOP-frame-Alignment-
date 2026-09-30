@@ -18,8 +18,8 @@ test('an upright clip gets a tall frame; a widescreen clip keeps the widescreen 
   }
   await request.put('/api/videos', {
     data: [
-      { id: 'vid-upright', url: 'http://localhost:3000/test-upright.webm', title: 'Upright clip' },
-      { id: 'vid-wide', url: 'http://localhost:3000/test-wide.webm', title: 'Wide clip' },
+      { id: 'vid-upright', url: '/test-upright.webm', title: 'Upright clip' },
+      { id: 'vid-wide', url: '/test-wide.webm', title: 'Wide clip' },
     ],
   });
   try {

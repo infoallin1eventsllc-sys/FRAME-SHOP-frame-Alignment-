@@ -25,7 +25,7 @@ npm run build:preview       # the single-file demo page -> preview.html
 npm run diagnose            # whole-site check -> diagnostic-report/report.md
 ```
 
-Tests run against a server you start yourself. For all 121 to run (none
+Tests run against a server you start yourself. For all 124 to run (none
 skipped), start it with the stand-ins, then run the tests with the matching
 variables:
 
@@ -45,7 +45,7 @@ misses a change — if a test sees old behaviour, restart the server.
 
 ## State at the end of 29 Sep
 
-- 121 tests passing; production build and a production smoke test clean.
+- 124 tests passing; production build and a production smoke test clean.
 - Marketing tab shows a count of drafts waiting; Paul gets a morning email (after 7am shop time, only when something is waiting) once email is connected.
 - `npm audit`: clean (0 vulnerabilities).
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
@@ -87,10 +87,22 @@ misses a change — if a test sees old behaviour, restart the server.
   `src/utils/aiTells.ts`, shown on the draft card; the assistants' rule 7 in
   `marketing.ts` tells them to avoid the same list.
 
+- Security pass 2: owner login lives in `auth.ts`; photo/video addresses must
+  be https (or data:image / site paths); public booking fields are bounded,
+  the service comes from the shop's list, booking ids are random; public
+  errors never include internal detail; malformed requests get 400.
+- Demo: downloads (PDF, Excel, rate sheet) work inside the Claude preview via
+  the `downloads` capability (`src/utils/saveFile.ts`); the demo draws its PDF
+  in the browser (`src/demo/demoPdf.ts`, jsPDF). `vite.config.ts` swaps
+  `src/demo/install` for `src/demo/off.ts` outside demo builds, so no demo
+  code (or jsPDF) reaches the live bundle. Publish the preview with
+  `capabilities: {downloads: true}`.
+
 ## Client documents (Claude Docs, private until shared; Meridian letterhead on each)
 
 | Document | Link |
 |---|---|
+| **Demo & Trial Packet** (send this first) | https://claude.ai/artifact/CRyJnwaXmgUNDEWA9GSgMk |
 | Handoff Plan | https://claude.ai/artifact/JNp2pLjDQxb45JEQKGpoKG |
 | Your Photos & Videos | https://claude.ai/artifact/AEftk71bJd4NCbRWbFczuc |
 | Paul's trial checklist | https://claude.ai/artifact/KkHAzyTNNwQt3yrtXJcDeA |

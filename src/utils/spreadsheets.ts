@@ -1,6 +1,7 @@
 import writeExcelFile from "write-excel-file/browser";
 import { Booking, InternalInvoice, ShopRates } from "../types";
 import { SHOP_INFO } from "../data/shopData";
+import { saveFile } from "./saveFile";
 import { balanceDue, PAYMENT_METHOD_LABEL } from "./invoiceMath";
 
 /**
@@ -103,7 +104,8 @@ export function allInvoicesSheets(bookings: Booking[], exportedAt = new Date()):
 
 async function download(sheets: SheetSpec[], fileName: string) {
   try {
-    await writeExcelFile(sheets).toFile(fileName);
+    const outcome = await saveFile(fileName, await writeExcelFile(sheets).toBlob());
+    if (outcome === "failed") alert("The spreadsheet could not be saved. Try again.");
   } catch {
     alert("The spreadsheet could not be created. Try again, or use Download PDF instead.");
   }

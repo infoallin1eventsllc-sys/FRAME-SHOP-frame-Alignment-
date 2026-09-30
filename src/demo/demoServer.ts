@@ -13,7 +13,8 @@
  */
 import { acceptInvoice, recomputePayments } from '../../invoice';
 import { publicTicket } from '../utils/publicTicket';
-import { SERVICES } from '../data/shopData';
+import { SERVICES, SHOP_INFO } from '../data/shopData';
+import { renderDemoInvoicePdf } from './demoPdf';
 import { videoUrl, deleteVideo, clearVideos } from './videoStore';
 
 export const DEMO_PIN = '1234';
@@ -335,8 +336,20 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
   if (p === '/api/shopify/invoice/send') return json(503, { error: 'Demo mode: Shopify is not connected, so no email was sent. On the live site this emails the customer a payment link.' });
   if (p.startsWith('/api/marketing')) return demoMarketing(s, m, seg, body, ownerOnly);
   if (p === '/api/email/config') return json(200, { enabled: false, replyTo: 'theframeshop13@gmail.com' });
-  if (seg[1] === 'bookings' && (seg[3] === 'invoice.pdf' || seg[3] === 'invoice')) {
-    return json(503, { error: 'Demo mode: PDFs are made by the server, so Download PDF and Email PDF only work on the live site.' });
+  if (seg[1] === 'bookings' && seg[3] === 'invoice.pdf' && m === 'GET') {
+    const denied = ownerOnly();
+    if (denied) return denied;
+    const b = s.bookings.find((x) => x.id === seg[2]);
+    if (!b?.invoice) return json(404, { error: 'This job has no invoice yet.' });
+    const pdf = renderDemoInvoicePdf(
+      b.invoice,
+      { name: SHOP_INFO.name, address: SHOP_INFO.address, phone: SHOP_INFO.phone, email: SHOP_INFO.email },
+      { name: b.name, phone: b.phone, email: b.email, ticketNumber: b.ticketNumber, bike: [b.bikeYear, b.bikeMake, b.bikeModel].filter(Boolean).join(' ') },
+    );
+    return new Response(pdf, { status: 200, headers: { 'Content-Type': 'application/pdf' } });
+  }
+  if (seg[1] === 'bookings' && seg[3] === 'invoice') {
+    return json(503, { error: 'Demo mode: emailing works once the shop’s email account is connected on the live site. Download PDF works here.' });
   }
   if (p === '/api/diagnostic') return json(503, { error: 'The AI diagnostic is not connected in demo mode.' });
 

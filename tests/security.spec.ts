@@ -128,3 +128,50 @@ test('3. guessing the PIN is cut off: 5 tries per visitor, then a pause for ever
   expect(paused.status()).toBe(429);
   expect((await paused.json()).error).toMatch(/paused/);
 });
+
+test('4. only the owner can send large photo uploads, and only safe addresses are accepted', async () => {
+  // A stranger's 5 MB body is refused at the door, not read first.
+  const big = await api.put('/api/media', { data: { heroImage: 'data:image/png;base64,' + 'A'.repeat(5_000_000) } });
+  expect(big.status()).toBe(401);
+
+  const owner = { 'x-shop-secret': SECRET };
+  for (const bad of ['javascript:alert(1)', 'http://insecure.example/x.jpg', 'data:text/html;base64,PHNjcmlwdD4=']) {
+    expect((await api.put('/api/media', { headers: owner, data: { heroImage: bad } })).status(), bad).toBe(400);
+  }
+  expect((await api.put('/api/media', { headers: owner, data: { galleryPhotos: { 'proj-1': 'javascript:alert(1)' } } })).status()).toBe(400);
+  expect((await api.put('/api/media', { headers: owner, data: { heroImage: 'https://images.example/bike.jpg', paulPhoto: 'data:image/jpeg;base64,/9j/4AAQ' } })).ok()).toBe(true);
+
+  for (const bad of ['javascript:alert(1)', '//evil.example/x.mp4', 'http://insecure.example/x.mp4']) {
+    expect((await api.put('/api/videos', { headers: owner, data: [{ id: 'v1', title: 'x', url: bad }] })).status(), bad).toBe(400);
+  }
+  expect((await api.put('/api/videos', { headers: owner, data: [{ id: 'v1', title: 'x', url: 'https://youtu.be/abc12345678' }] })).ok()).toBe(true);
+  await api.put('/api/videos', { headers: owner, data: [] });
+});
+
+test('5. a public booking is bounded and uses the shop’s real services', async () => {
+  const res = await api.post('/api/bookings', {
+    data: { name: 'N'.repeat(5000), phone: '8325550177', email: 'ok@example.com', bikeYear: '2021', bikeMake: 'Indian', bikeModel: 'Chief', serviceId: 'no-such-service', serviceTitle: 'FREE WORK — $0' },
+  });
+  expect(res.status()).toBe(201);
+  const { booking } = await res.json();
+  expect(booking.id).toMatch(/^bk-[0-9a-f-]{36}$/);
+  expect(booking.name.length).toBe(120);
+  expect(booking.serviceTitle).toBe('Power Train Alignment');
+  expect(JSON.stringify(booking)).not.toContain('FREE WORK');
+
+  const badEmail = await api.post('/api/bookings', { data: { name: 'A', phone: '8325550178', email: 'not-an-email', bikeMake: 'Indian', bikeModel: 'Chief' } });
+  expect(badEmail.status()).toBe(400);
+  const notText = await api.post('/api/bookings', { data: { name: { $gt: '' }, phone: ['1'], bikeMake: 'x', bikeModel: 'y' } });
+  expect(notText.status()).toBe(400);
+});
+
+test('6. broken requests get a plain "bad request", and public errors reveal nothing internal', async () => {
+  const garbled = await api.post('/api/messages', { headers: { 'content-type': 'application/json' }, data: '{"name": "x", ' });
+  expect(garbled.status()).toBe(400);
+  expect(await garbled.text()).not.toMatch(/SyntaxError|at JSON|node_modules|\/home\//);
+
+  const diag = await api.post('/api/diagnostic', { data: { symptomDescription: { nested: true } } });
+  expect(diag.status()).toBe(400);
+  const pay = await api.post('/api/shopify/checkout', { data: { bookingId: 'bk-nope' } });
+  expect(await pay.text()).not.toMatch(/details|stack|Error:/);
+});

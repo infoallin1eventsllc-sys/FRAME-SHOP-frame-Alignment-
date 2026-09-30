@@ -2,6 +2,7 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 import http from 'http';
 import { renderInvoicePdf } from '../invoicePdf';
 import { acceptInvoice } from '../invoice';
+import { looksLikeEmail } from '../mailer';
 
 /**
  * Invoices as PDFs: downloaded by Paul, or emailed to the customer.
@@ -147,13 +148,17 @@ test.describe('Emailing the PDF', () => {
   });
 
   test('refuses an address that is not one', async ({ request }) => {
-    const b = await bookingWithInvoice(request, 'someone@example.com, other@evil.test');
-    try {
-      expect((await request.post(`/api/bookings/${b.id}/invoice/email`)).status()).toBe(400);
-      expect(received).toHaveLength(0);
-    } finally {
-      await request.delete(`/api/bookings/${b.id}`);
-    }
+    const sneaky = 'someone@example.com, other@evil.test';
+    // Stopped at the door: a booking can't be made with it...
+    const res = await request.post('/api/bookings', {
+      data: { name: 'Pat Customer', phone: '8325550177', email: sneaky, bikeYear: '2021', bikeMake: 'Indian', bikeModel: 'Chief' },
+    });
+    expect(res.status()).toBe(400);
+    // ...and the sending check still refuses it, for bookings saved before
+    // the door check existed.
+    expect(looksLikeEmail(sneaky)).toBe(false);
+    expect(looksLikeEmail('pat@example.com')).toBe(true);
+    expect(received).toHaveLength(0);
   });
 
   test('from the portal: Email PDF sends it and says where it went', async ({ page, request }) => {

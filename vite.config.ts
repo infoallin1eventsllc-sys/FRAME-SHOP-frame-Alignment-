@@ -16,9 +16,12 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss(), siteUrl(mode)],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, '.') },
+        // Only the demo build gets the demo. Everywhere else the module is an
+        // empty stand-in, so none of its code can reach the live bundle.
+        ...(mode === 'demo' ? [] : [{ find: /^\.\/demo\/install$/, replacement: path.resolve(__dirname, 'src/demo/off.ts') }]),
+      ],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { exportRatesToExcel } from '../utils/spreadsheets';
+import { openPrintable } from '../utils/saveFile';
 import { Plus, Trash2, Save, FileSpreadsheet, Printer, Calculator, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { safeFetch } from '../utils/api';
 import { SHOP_INFO } from '../data/shopData';
@@ -21,13 +22,8 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;',
 
 /** Its own window, so the print is the rate sheet and not the whole portal. */
 function printRates(rates: ShopRates) {
-  const win = window.open('', '_blank', 'width=800,height=900');
-  if (!win) {
-    alert('Your browser blocked the print window. Allow pop-ups for this site and try again.');
-    return;
-  }
   const row = (a: string, b: string) => `<tr><td>${escapeHtml(a)}</td><td class="n">${escapeHtml(b)}</td></tr>`;
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rate Sheet</title>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Rate Sheet</title>
     <style>body{font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:44rem;margin:2rem auto;padding:0 1rem;color:#18181b}
     h1{font-size:1.4rem;margin:0}p{color:#71717a;margin:.2rem 0 1.5rem}table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
     td,th{border-bottom:1px solid #e4e4e7;padding:.4rem;text-align:left}.n{text-align:right;white-space:nowrap}</style></head><body>
@@ -36,10 +32,8 @@ function printRates(rates: ShopRates) {
     ${row('Shop supplies', `${rates.suppliesPct}%`)}${row('Sales tax', rates.taxPct != null ? `${rates.taxPct}%` : 'not set')}</table>
     <table><tr><th>Service</th><th class="n">Price</th><th>Unit</th></tr>
     ${rates.lines.map((l) => `<tr><td>${escapeHtml(l.name)}</td><td class="n">${l.price != null ? money(l.price) : '—'}</td><td>${escapeHtml(l.unit)}</td></tr>`).join('')}</table>
-    </body></html>`);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 300);
+    </body></html>`;
+  void openPrintable(html, 'The-Frame-Shop-Rate-Sheet.html', 800, 900);
 }
 
 export const RatesPanel: React.FC<{ onSaved?: (rates: ShopRates) => void }> = ({ onSaved }) => {

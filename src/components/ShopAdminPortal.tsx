@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { exportSingleInvoiceToExcel, exportAllInvoicesToExcel } from "../utils/spreadsheets";
+import { saveFile, openPrintable } from "../utils/saveFile";
 import {
   Calendar,
   Clock,
@@ -104,7 +105,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
    * along with it.
    */
   const printOwnerGuide = () => {
-    const html = OWNER_GUIDE.map(section => `
+    const sections = OWNER_GUIDE.map(section => `
       <section>
         <h2>${section.heading}</h2>
         ${section.blurb ? `<p class="blurb">${section.blurb}</p>` : ""}
@@ -116,12 +117,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
           </div>`).join("")}
       </section>`).join("");
 
-    const win = window.open("", "_blank", "width=900,height=1000");
-    if (!win) {
-      alert("Your browser blocked the print window. Allow pop-ups for this site and try again.");
-      return;
-    }
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8">
+    const html = `<!doctype html><html><head><meta charset="utf-8">
       <title>The Frame Shop — Running Your Website</title>
       <style>
         body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
@@ -141,11 +137,9 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
       </style></head><body>
       <h1>Running Your Website</h1>
       <p class="sub">The Frame Shop &middot; Spring, Texas &middot; prepared by Meridian Interface</p>
-      ${html}
-      </body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 300);
+      ${sections}
+      </body></html>`;
+    void openPrintable(html, "The-Frame-Shop-Owner-Guide.html", 900, 1000);
   };
 
   // Media Control State (Owner Only)
@@ -895,15 +889,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
         setInvoiceNotice(await failure(res, "The PDF could not be made"));
         return;
       }
-      const url = URL.createObjectURL(await res.blob());
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Invoice-${saved.invoice!.invoiceNumber}-TheFrameShop.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30_000);
-      setInvoiceNotice("PDF downloaded.");
+      const outcome = await saveFile(`Invoice-${saved.invoice!.invoiceNumber}-TheFrameShop.pdf`, await res.blob());
+      setInvoiceNotice(outcome === "saved" ? "PDF downloaded." : outcome === "declined" ? "Download cancelled." : "The PDF could not be saved. Try again.");
     } catch {
       setInvoiceNotice("The PDF could not be downloaded: the website could not be reached.");
     } finally {

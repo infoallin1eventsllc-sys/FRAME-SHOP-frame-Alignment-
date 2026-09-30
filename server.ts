@@ -30,6 +30,7 @@ import { registerMarketing } from "./marketing";
 import { SITE_PAGES, isKnownPage } from "./src/data/routes";
 import { publicTicket } from "./src/utils/publicTicket";
 import { logEvent, errorFields, alertsConfigured } from "./logger";
+import { requireAdmin, registerAuthRoutes, productionProblems, SHOP_API_SECRET } from "./auth";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -152,9 +153,13 @@ app.post("/api/shopify/webhook", express.raw({ type: "application/json" }), (req
  * otherwise reject them with 413 before the media route was ever reached.
  */
 const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
-app.use("/api/media", express.json({ limit: MAX_MEDIA_BYTES }));
+const mediaJson = express.json({ limit: MAX_MEDIA_BYTES });
 
-app.use(express.json());
+// Everything else gets the normal 100 KB limit. /api/media is skipped here and
+// parsed on its own route, after the owner check — so a stranger can't make
+// the server read 12 MB bodies just to be told "Unauthorized".
+const standardJson = express.json();
+app.use((req, res, next) => (req.path === "/api/media" ? next() : standardJson(req, res, next)));
 
 // Per visitor per minute. Overridable so a test run — every request from one
 // address — does not trip limits meant for many different customers.
@@ -174,47 +179,6 @@ const bookingLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
 });
 
-const SHOP_OWNER_PIN  = process.env.SHOP_OWNER_PIN  || "1234";
-const SHOP_API_SECRET = process.env.SHOP_API_SECRET || "";
-
-/**
- * Owner logins. A correct PIN gets a random session key that expires; the
- * master SHOP_API_SECRET never leaves the server. (It used to be handed to the
- * browser on login — one guessed PIN and it worked forever.) Sessions live in
- * memory, so a restart simply asks Paul for his PIN again.
- */
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-const sessions = new Map<string, number>(); // key -> expiry time
-
-function newSession(): string {
-  const now = Date.now();
-  for (const [key, expires] of sessions) if (expires <= now) sessions.delete(key);
-  const key = crypto.randomBytes(32).toString("hex");
-  sessions.set(key, now + SESSION_TTL_MS);
-  return key;
-}
-
-const sameSecret = (a: string, b: string) =>
-  a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-
-function isOwner(token: string): boolean {
-  const expires = sessions.get(token);
-  if (expires !== undefined) {
-    if (expires > Date.now()) return true;
-    sessions.delete(token);
-  }
-  // The master secret still works for scripts run on the server itself.
-  return Boolean(SHOP_API_SECRET) && sameSecret(token, SHOP_API_SECRET);
-}
-
-function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
-  if (!SHOP_API_SECRET) return next();
-  const token = String(req.headers["x-shop-secret"] || "");
-  if (!token || !isOwner(token)) {
-    return res.status(401).json({ error: "Unauthorized." });
-  }
-  next();
-}
 
 /* ---------------------------------------------------------------------------
  * Shop video hosting (Supabase Storage)
@@ -396,6 +360,9 @@ function sanitiseVideos(input: unknown): ShopVideoRecord[] | null {
     const { id, url, title, description, storageObject } = raw as Record<string, unknown>;
     if (typeof id !== "string" || typeof url !== "string" || typeof title !== "string") return null;
     if (!id || !url || !title || url.length > 2000 || title.length > 200) return null;
+    // Played on every visitor's screen and linked as "Open original": a
+    // secure web address, or a file on this site itself ("/clip.webm").
+    if (!/^https:\/\/[^\s]+$/i.test(url) && !/^\/(?!\/)[^\s]*$/.test(url)) return null;
     out.push({
       id,
       url,
@@ -443,10 +410,19 @@ app.get("/api/media", (_req, res) => {
 });
 
 // Owner only. Sent whole, the same way the portal holds it.
-app.put("/api/media", requireAdmin, (req, res) => {
+app.put("/api/media", requireAdmin, mediaJson, (req, res) => {
   const body = req.body;
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return res.status(400).json({ error: "Invalid media payload." });
+  }
+
+  // A photo is an uploaded image (data:image/...), a secure web address, or
+  // empty (use the default). Anything else — a javascript: address, say — is
+  // refused rather than published to every visitor.
+  const isPhoto = (v: unknown): v is string =>
+    typeof v === "string" && (v === "" || /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(v) || /^https:\/\/[^\s]+$/i.test(v));
+  for (const v of [body.heroImage, body.paulPhoto, ...Object.values(body.galleryPhotos ?? {})]) {
+    if (v !== undefined && !isPhoto(v)) return res.status(400).json({ error: "That photo address isn't allowed. Upload the photo, or use an https:// web address." });
   }
 
   const clean: SiteMedia = {};
@@ -455,7 +431,7 @@ app.put("/api/media", requireAdmin, (req, res) => {
   if (body.galleryPhotos && typeof body.galleryPhotos === "object" && !Array.isArray(body.galleryPhotos)) {
     const photos: Record<string, string> = {};
     for (const [id, url] of Object.entries(body.galleryPhotos)) {
-      if (typeof id === "string" && typeof url === "string" && id.length <= 64) photos[id] = url;
+      if (/^[\w-]{1,64}$/.test(id) && typeof url === "string") photos[id] = url;
     }
     clean.galleryPhotos = photos;
   }
@@ -646,42 +622,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-/**
- * PIN guessing. Each visitor gets 5 wrong tries per 15 minutes. And because an
- * attacker can use many addresses, 30 wrong tries in an hour from anywhere
- * pauses all logins for an hour and raises an error alert. With a 6-digit PIN
- * (required in production) that is years of guessing, not minutes.
- */
-const pinLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.PIN_RATE_LIMIT) || 5,
-  skipSuccessfulRequests: true,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many wrong PINs from this device. Wait 15 minutes and try again." },
-});
-const PIN_LOCKOUT_FAILURES = Number(process.env.PIN_LOCKOUT_FAILURES) || 30;
-let pinFailures: number[] = [];
-let pinLockedUntil = 0;
-
-app.post("/api/auth/pin", pinLimiter, (req, res) => {
-  const now = Date.now();
-  if (now < pinLockedUntil) {
-    return res.status(429).json({ error: "Owner login is paused after too many wrong PINs. Try again in an hour, or call Otis." });
-  }
-  const pin = String(req.body?.pin ?? "");
-  if (!pin || !sameSecret(pin, SHOP_OWNER_PIN)) {
-    pinFailures = pinFailures.filter((t) => t > now - 60 * 60 * 1000);
-    pinFailures.push(now);
-    if (pinFailures.length >= PIN_LOCKOUT_FAILURES) {
-      pinLockedUntil = now + 60 * 60 * 1000;
-      pinFailures = [];
-      logEvent("error", "auth.pin_lockout", { failures: PIN_LOCKOUT_FAILURES });
-    }
-    return res.status(401).json({ error: "Invalid PIN. Access denied." });
-  }
-  res.json({ token: newSession() });
-});
+registerAuthRoutes(app);
 
 /**
  * Public ticket lookup — one booking at a time.
@@ -764,9 +705,17 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
       source,
     } = req.body;
 
-    if (!name || !phone || !bikeMake || !bikeModel) {
+    if (!clean(name, 120) || !clean(phone, 40) || !clean(bikeMake, 60) || !clean(bikeModel, 60)) {
       return res.status(400).json({ error: "Missing required contact or motorcycle details." });
     }
+    const emailText = clean(email, 200);
+    if (emailText && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailText)) {
+      return res.status(400).json({ error: "That email address doesn't look right." });
+    }
+    // The service comes from the shop's own list, never from the text a
+    // browser sends: its title goes onto deposit orders and invoices.
+    const service = PUBLIC_SERVICE_PRICES.find((s) => s.id === serviceId)
+      ?? PUBLIC_SERVICE_PRICES.find((s) => s.id === "powertrain-alignment")!;
 
     const key = typeof idempotencyKey === "string" && idempotencyKey.length <= 100 ? idempotencyKey : undefined;
     const currentBookings = loadBookings();
@@ -791,20 +740,22 @@ app.post("/api/bookings", bookingLimiter, (req, res) => {
     do {
       ticketNumber = "FS-" + crypto.randomInt(100000, 1000000);
     } while (taken.has(ticketNumber));
+    const date = clean(preferredDate, 10);
     const newBooking: Booking = {
-      id: "bk-" + Date.now(),
+      // Random, not a timestamp: the public deposit checkout takes this id.
+      id: "bk-" + crypto.randomUUID(),
       ticketNumber,
-      serviceId: serviceId || "powertrain-alignment",
-      serviceTitle: serviceTitle || "Power Train Alignment",
-      bikeYear: bikeYear || "2022",
-      bikeMake: bikeMake || "Harley-Davidson",
-      bikeModel: bikeModel || "Road Glide",
-      issueNotes: issueNotes || "Routine chassis inspection",
-      preferredDate: preferredDate || new Date().toISOString().split("T")[0],
-      preferredTimeSlot: preferredTimeSlot || "Morning (9AM - 12PM)",
-      name,
-      phone,
-      email,
+      serviceId: service.id,
+      serviceTitle: service.title,
+      bikeYear: clean(bikeYear, 4),
+      bikeMake: clean(bikeMake, 60),
+      bikeModel: clean(bikeModel, 60),
+      issueNotes: clean(issueNotes, 4000),
+      preferredDate: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().split("T")[0],
+      preferredTimeSlot: clean(preferredTimeSlot, 60) || "Morning (9AM - 12PM)",
+      name: clean(name, 120),
+      phone: clean(phone, 40),
+      email: emailText,
       status: "pending",
       createdAt: new Date().toISOString(),
       ...(key ? { idempotencyKey: key } : {}),
@@ -1336,9 +1287,12 @@ function claimDiagnosticCall(): boolean {
 
 app.post("/api/diagnostic", diagLimiter, async (req, res) => {
   try {
-    const { motorcycleDetails, symptomDescription, speedRange } = req.body;
+    // Bounded: this text goes to a paid AI service.
+    const motorcycleDetails = clean(req.body?.motorcycleDetails, 200);
+    const symptomDescription = clean(req.body?.symptomDescription, 2000);
+    const speedRange = clean(req.body?.speedRange, 60);
 
-    if (!symptomDescription || symptomDescription.trim().length === 0) {
+    if (!symptomDescription) {
       return res.status(400).json({ error: "Please describe the motorcycle handling symptoms." });
     }
 
@@ -1424,7 +1378,7 @@ Return a JSON response matching strictly this JSON format without markdown code 
     }
   } catch (err: any) {
     logEvent("error", "diagnostic.failed", errorFields(err));
-    res.status(500).json({ error: "Failed to generate AI diagnostic analysis.", details: err?.message });
+    res.status(500).json({ error: "Failed to generate AI diagnostic analysis." });
   }
 });
 
@@ -1466,7 +1420,7 @@ app.post("/api/shopify/checkout", bookingLimiter, async (req, res) => {
     res.json({ url: draft.invoiceUrl, draftOrderId: draft.id, orderName: draft.name });
   } catch (err: any) {
     logEvent("error", "shopify.checkout.failed", errorFields(err));
-    res.status(502).json({ error: "Failed to create payment link.", details: err.message });
+    res.status(502).json({ error: "Online payment isn't available right now. Please call the shop to pay your deposit." });
   }
 });
 
@@ -1551,6 +1505,9 @@ app.use("/api", (req, res) => {
  * the caller a plain JSON error with no internals in it.
  */
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const type = (err as { type?: string })?.type;
+  if (type === "entity.parse.failed") return res.status(400).json({ error: "The request wasn't valid." });
+  if (type === "entity.too.large") return res.status(413).json({ error: "That's too large to send." });
   logEvent("error", "request.unhandled", { method: req.method, path: req.path, ...errorFields(err) });
   if (res.headersSent) return;
   res.status(500).json({ error: "Something went wrong on our side. Please try again, or call the shop." });
@@ -1589,37 +1546,6 @@ app.get("/sitemap.xml", (req, res) => {
   );
 });
 
-/**
- * Settings the live site cannot run safely without. Missing any of them used
- * to mean a warning in a log nobody reads — and, for the secret, the customer
- * list open to anyone. In production the server now refuses to start instead,
- * and says exactly what to set.
- */
-export function productionProblems(env: NodeJS.ProcessEnv): string[] {
-  const problems: string[] = [];
-  if (!env.SHOP_API_SECRET || env.SHOP_API_SECRET.length < 32 || /generate|random-hex|here/i.test(env.SHOP_API_SECRET)) {
-    problems.push(
-      "SHOP_API_SECRET is missing, shorter than 32 characters, or still the example text. Owner pages would be open to anyone.\n" +
-      "      Generate one: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
-    );
-  }
-  if (!/^\d{6,}$/.test(env.SHOP_OWNER_PIN || "") || /^(\d)\1+$|^123456|^654321/.test(env.SHOP_OWNER_PIN || "")) {
-    problems.push("SHOP_OWNER_PIN must be Paul's own PIN of at least 6 digits (not 123456, 111111 or the like).");
-  }
-  if (!/^https:\/\/[^\s/]+/.test(env.APP_URL || "")) {
-    problems.push(
-      "APP_URL must be the site's https:// address (e.g. https://theframeshop.com).\n" +
-      "      Google, link previews and every unsubscribe link use it."
-    );
-  }
-  if (!env.DATA_DIR) {
-    problems.push(
-      "DATA_DIR is not set. Point it at the host's permanent disk (e.g. a volume mounted at /data).\n" +
-      "      Without it, bookings, invoices and messages are wiped on every deploy."
-    );
-  }
-  return problems;
-}
 
 // Start Express + Vite Server
 async function start() {
