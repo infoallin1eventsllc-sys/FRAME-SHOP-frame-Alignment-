@@ -30,7 +30,8 @@ import { registerMarketing } from "./marketing";
 import { SITE_PAGES, isKnownPage } from "./src/data/routes";
 import { publicTicket } from "./src/utils/publicTicket";
 import { logEvent, errorFields, alertsConfigured } from "./logger";
-import { requireAdmin, registerAuthRoutes, productionProblems, SHOP_API_SECRET } from "./auth";
+import { requireAdmin, registerAuthRoutes, productionProblems, SHOP_API_SECRET, revokeAllSessions } from "./auth";
+import { configureSecurity, recordSecurityEvent } from "./security";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -168,7 +169,10 @@ const diagLimiter = rateLimit({
   max: Number(process.env.DIAGNOSTIC_RATE_LIMIT) || 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many diagnostic requests. Please wait a moment and try again." },
+  handler: (req, res) => {
+    recordSecurityEvent("flood", req, `${req.method} ${req.path}`);
+    res.status(429).json({ error: "Too many diagnostic requests. Please wait a moment and try again." });
+  },
 });
 
 const bookingLimiter = rateLimit({
@@ -176,7 +180,10 @@ const bookingLimiter = rateLimit({
   max: Number(process.env.BOOKING_RATE_LIMIT) || 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests. Please slow down." },
+  handler: (req, res) => {
+    recordSecurityEvent("flood", req, `${req.method} ${req.path}`);
+    res.status(429).json({ error: "Too many requests. Please slow down." });
+  },
 });
 
 
@@ -317,6 +324,14 @@ app.delete("/api/videos/object/:objectName", requireAdmin, async (req, res) => {
 // deploy. DATA_DIR points at it; locally it defaults to ./data.
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), "data"));
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
+
+// The security watch writes beside the other records; alerts go to the shop.
+configureSecurity({
+  dataDir: DATA_DIR,
+  alertTo: process.env.SECURITY_ALERT_EMAIL || SHOP_INFO.email,
+  siteUrl: process.env.APP_URL || "",
+  revokeAll: revokeAllSessions,
+});
 const VIDEOS_FILE = path.join(DATA_DIR, "videos.json");
 
 /* ---------------------------------------------------------------------------

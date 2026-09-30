@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test';
 import { spawn, type ChildProcess } from 'child_process';
+import http from 'http';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -22,16 +23,29 @@ const PIN = '482193';
 let server: ChildProcess;
 let api: APIRequestContext;
 let dataDir: string;
+// A stand-in for the email service, so alert emails can be read back.
+const MAIL_PORT = PORT + 1;
+let mailServer: http.Server;
+const mails: { to: string[]; subject: string; text: string }[] = [];
+const mailTo = (subject: RegExp) => mails.filter((m) => subject.test(m.subject));
 
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
   test.setTimeout(90_000);
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-sec-'));
+  mailServer = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => { mails.push(JSON.parse(body)); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"id":"stub"}'); });
+  });
+  await new Promise<void>((r) => mailServer.listen(MAIL_PORT, '127.0.0.1', () => r()));
   server = spawn(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'server.ts'], {
     env: {
       ...process.env, PORT: String(PORT), DATA_DIR: dataDir, SHOP_API_SECRET: SECRET, SHOP_OWNER_PIN: PIN,
       PIN_RATE_LIMIT: '5', PIN_LOCKOUT_FAILURES: '12', BOOKING_RATE_LIMIT: '1000', TRUST_PROXY: '1',
+      RESEND_API_KEY: 'test', INVOICE_FROM_EMAIL: 'The Frame Shop <alerts@example.com>', RESEND_API_URL: `http://127.0.0.1:${MAIL_PORT}/emails`,
+      SECURITY_ALERT_EMAIL: 'paul@example.com', APP_URL: `http://127.0.0.1:${PORT}`,
     },
     stdio: 'ignore',
     detached: true, // its own process group, so afterAll stops the whole thing
@@ -46,6 +60,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await api?.dispose();
+  await new Promise<void>((r) => (mailServer ? mailServer.close(() => r()) : r()));
   if (server?.pid) {
     try { process.kill(-server.pid, 'SIGTERM'); } catch { /* already gone */ }
   }
@@ -112,6 +127,47 @@ test('3. a correct PIN gets an expiring session key — never the admin key itse
   expect(again).not.toBe(token);
 });
 
+test('7. every login emails Paul "was this you?", and its link signs every device out', async () => {
+  const token = (await (await api.post('/api/auth/pin', { headers: as('10.0.9.1'), data: { pin: PIN } })).json()).token;
+  await expect.poll(() => mailTo(/New login/).length).toBeGreaterThan(0);
+  const mail = mailTo(/New login/).at(-1)!;
+  expect(mail.to).toEqual(['paul@example.com']);
+  expect(mail.text).toMatch(/If it wasn't you, sign every device out now/);
+  const link = mail.text.match(/http:\/\/\S+\/api\/security\/revoke\?t=\S+/)![0];
+  const t = new URL(link).searchParams.get('t')!;
+
+  // Opening the link only shows a button: email apps open links by themselves.
+  const opened = await api.get(link);
+  expect(await opened.text()).toContain('Sign everyone out');
+  expect((await api.get('/api/bookings', { headers: { 'x-shop-secret': token } })).ok()).toBe(true);
+
+  // Pressing it signs everyone out, once.
+  const done = await api.post('/api/security/revoke', { form: { t } });
+  expect(await done.text()).toContain('Every device has been signed out');
+  expect((await api.get('/api/bookings', { headers: { 'x-shop-secret': token } })).status()).toBe(401);
+  expect((await api.post('/api/security/revoke', { form: { t } })).status()).toBe(400);
+  expect((await api.post('/api/security/revoke', { form: { t: 'forged.1.abc' } })).status()).toBe(400);
+});
+
+test('8. the Security tab shows what happened, and "Sign everyone out" works', async () => {
+  expect((await api.get('/api/security')).status()).toBe(401);
+  const token = (await (await api.post('/api/auth/pin', { headers: as('10.0.9.2'), data: { pin: PIN } })).json()).token;
+  const sec = await (await api.get('/api/security', { headers: { 'x-shop-secret': token } })).json();
+  const kinds = sec.events.map((e: { kind: string }) => e.kind);
+  expect(kinds).toEqual(expect.arrayContaining(['login_ok', 'unauthorized', 'signout_all']));
+  expect(sec.events[0].address).toMatch(/\.x$|…$|unknown/); // never the full address
+  expect(JSON.stringify(sec)).not.toMatch(/dana@example\.com|Dana Rider/); // no customer details
+  expect(sec.alertsTo).toBe('paul@example.com');
+
+  expect((await api.post('/api/security/signout-all', { headers: { 'x-shop-secret': token } })).ok()).toBe(true);
+  expect((await api.get('/api/security', { headers: { 'x-shop-secret': token } })).status()).toBe(401);
+});
+
+test('9. repeated attempts to open owner information raise the alarm', async () => {
+  for (let i = 0; i < 6; i++) await api.get('/api/messages', { headers: as('10.0.8.1') });
+  await expect.poll(() => mailTo(/tried to open your customer records/).length).toBe(1);
+});
+
 test('3. guessing the PIN is cut off: 5 tries per visitor, then a pause for everyone', async () => {
   for (let i = 0; i < 5; i++) {
     expect((await api.post('/api/auth/pin', { headers: as('10.0.1.1'), data: { pin: String(100000 + i) } })).status()).toBe(401);
@@ -174,4 +230,11 @@ test('6. broken requests get a plain "bad request", and public errors reveal not
   expect(diag.status()).toBe(400);
   const pay = await api.post('/api/shopify/checkout', { data: { bookingId: 'bk-nope' } });
   expect(await pay.text()).not.toMatch(/details|stack|Error:/);
+});
+
+test('10. wrong PINs and the login pause alert Paul, once each, not once per attempt', async () => {
+  // Test 3 above made 12 wrong guesses and triggered the pause.
+  await expect.poll(() => mailTo(/Wrong PINs/).length).toBe(1);
+  await expect.poll(() => mailTo(/logins paused/).length).toBe(1);
+  expect(mailTo(/logins paused/)[0].text).toMatch(/Nothing was opened/);
 });

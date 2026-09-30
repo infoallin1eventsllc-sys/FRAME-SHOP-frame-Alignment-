@@ -335,6 +335,16 @@ export async function handleDemoRequest(method: string, url: URL, headers: Heade
   if (p === '/api/shopify/checkout') return json(503, { error: 'Online payment is not connected in demo mode.' });
   if (p === '/api/shopify/invoice/send') return json(503, { error: 'Demo mode: Shopify is not connected, so no email was sent. On the live site this emails the customer a payment link.' });
   if (p.startsWith('/api/marketing')) return demoMarketing(s, m, seg, body, ownerOnly);
+  if (p === '/api/security' && m === 'GET') {
+    const denied = ownerOnly();
+    if (denied) return denied;
+    const zero = { logins: 0, wrongPins: 0, lockouts: 0, refused: 0, floods: 0 };
+    return json(200, { demo: true, events: [], day: zero, week: zero, alertsTo: '', emailOn: false });
+  }
+  if (p === '/api/security/signout-all' && m === 'POST') {
+    const denied = ownerOnly();
+    return denied ?? json(200, { ok: true });
+  }
   if (p === '/api/email/config') return json(200, { enabled: false, replyTo: 'theframeshop13@gmail.com' });
   if (seg[1] === 'bookings' && seg[3] === 'invoice.pdf' && m === 'GET') {
     const denied = ownerOnly();

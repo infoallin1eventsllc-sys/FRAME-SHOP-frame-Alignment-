@@ -173,7 +173,9 @@ test.describe('Emailing the PDF', () => {
       await page.getByRole('button', { name: 'Email PDF' }).click();
       await expect(page.getByRole('status').filter({ hasText: 'PDF invoice emailed to pdf@example.com' })).toBeVisible();
       await expect(page.getByTestId('invoice-email-status')).toContainText('Last emailed');
-      expect(received).toHaveLength(1);
+      // One invoice to the customer. (Logging in also sends Paul a "New login" notice.)
+      expect(received.filter((r) => r.body.to?.includes('pdf@example.com'))).toHaveLength(1);
+      expect(received.filter((r) => /New login/.test(r.body.subject))).toHaveLength(1);
     } finally {
       await request.delete(`/api/bookings/${b.id}`);
     }

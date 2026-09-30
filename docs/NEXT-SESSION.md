@@ -25,7 +25,7 @@ npm run build:preview       # the single-file demo page -> preview.html
 npm run diagnose            # whole-site check -> diagnostic-report/report.md
 ```
 
-Tests run against a server you start yourself. For all 124 to run (none
+Tests run against a server you start yourself. For all 128 to run (none
 skipped), start it with the stand-ins, then run the tests with the matching
 variables:
 
@@ -45,7 +45,7 @@ misses a change — if a test sees old behaviour, restart the server.
 
 ## State at the end of 29 Sep
 
-- 124 tests passing; production build and a production smoke test clean.
+- 128 tests passing; production build and a production smoke test clean.
 - Marketing tab shows a count of drafts waiting; Paul gets a morning email (after 7am shop time, only when something is waiting) once email is connected.
 - `npm audit`: clean (0 vulnerabilities).
 - Nothing is deployed. Nothing has been sent to a real customer, Shopify,
@@ -97,6 +97,13 @@ misses a change — if a test sees old behaviour, restart the server.
   `src/demo/install` for `src/demo/off.ts` outside demo builds, so no demo
   code (or jsPDF) reaches the live bundle. Publish the preview with
   `capabilities: {downloads: true}`.
+
+- Security watch (`security.ts`, Security tab): every owner login emails Paul
+  "was this you?" with a one-tap sign-everyone-out link (confirm page, then
+  POST; single use, 24 h); wrong PINs (3+/10 min), lockouts, owner-data
+  requests without login (5+/10 min) and form floods (20+/10 min) email Paul
+  (SECURITY_ALERT_EMAIL, default shop email) and post to ERROR_ALERT_WEBHOOK.
+  Alerts throttled to one per kind per 10 min. Addresses stored masked.
 
 ## Client documents (Claude Docs, private until shared; Meridian letterhead on each)
 

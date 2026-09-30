@@ -51,6 +51,7 @@ and its log says which. That's deliberate.
 | `ANTHROPIC_API_KEY` | from the Anthropic console |
 | `GEMINI_API_KEY` | from Google AI Studio |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_VIDEO_BUCKET` | optional: video uploads |
+| `SECURITY_ALERT_EMAIL` | optional: where new-login notices and security alerts go (defaults to the shop email) |
 | `ERROR_ALERT_WEBHOOK` | recommended: a Slack or Discord webhook, so errors reach you |
 
 Every setting is explained in `.env.example`.

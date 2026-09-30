@@ -238,7 +238,7 @@ async function run() {
       // The heading also shows on the PIN screen; the tabs appear only once logged in.
       await page.getByRole('button', { name: /Work Orders/ }).waitFor({ timeout: 8000 });
     } catch { add(where.current, 'owner login failed', 'Command Center did not open with the right PIN'); }
-    for (const tab of [/Work Orders/, /Customer Messages/, /Marketing/, /My Rates/, /Owner Photo Control/, /How Do I/]) {
+    for (const tab of [/Work Orders/, /Customer Messages/, /Marketing/, /My Rates/, /Owner Photo Control/, /Security/, /How Do I/]) {
       at(`Command Center · ${tab.source.replace(/\\/g, '')}`);
       const btn = page.getByRole('button', { name: tab }).first();
       if (!(await btn.count())) { add(where.current, 'missing tab', tab.source); continue; }

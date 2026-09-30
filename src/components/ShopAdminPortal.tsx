@@ -60,6 +60,7 @@ import { OWNER_GUIDE } from "../data/ownerGuide";
 import { fetchSiteMedia, saveSiteMedia, SiteMedia } from "../utils/siteMedia";
 import { MessagesPanel, fetchMessages } from "./MessagesPanel";
 import { MarketingPanel } from "./MarketingPanel";
+import { SecurityPanel } from "./SecurityPanel";
 import {
   processImage,
   formatBytes,
@@ -94,7 +95,7 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
   const [pinError, setPinError] = useState<string>("");
 
   // Navigation Tab State
-  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "messages" | "marketing" | "pricematrix" | "media" | "help">("bookings");
+  const [activeMainTab, setActiveMainTab] = useState<"bookings" | "messages" | "marketing" | "pricematrix" | "media" | "security" | "help">("bookings");
   const [unhandledMessages, setUnhandledMessages] = useState(0);
   // Marketing drafts waiting for Paul, shown on the tab so he sees them without opening it.
   const [draftsWaiting, setDraftsWaiting] = useState(0);
@@ -1108,6 +1109,18 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
 
                 <button
                   type="button"
+                  onClick={() => setActiveMainTab("security")}
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    activeMainTab === "security"
+                      ? "bg-orange-600 text-white shadow"
+                      : "bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800"
+                  }`}
+                >
+                  🛡️ Security
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setActiveMainTab("help")}
                   className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeMainTab === "help"
@@ -1228,6 +1241,8 @@ export const ShopAdminPortal: React.FC<ShopAdminPortalProps> = ({ isOpen, onClos
               <MessagesPanel onCountChange={setUnhandledMessages} />
             ) : activeMainTab === "marketing" ? (
               <MarketingPanel onDataChanged={fetchBookings} />
+            ) : activeMainTab === "security" ? (
+              <SecurityPanel />
             ) : activeMainTab === "pricematrix" ? (
               <RatesPanel onSaved={setRates} />
             ) : activeMainTab === "media" ? (

@@ -71,6 +71,32 @@ export const OWNER_GUIDE: GuideSection[] = [
     ],
   },
   {
+    heading: 'Keeping Your Command Center Safe',
+    blurb: 'The website blocks break-in attempts on its own. The Security tab shows what it blocked.',
+    items: [
+      {
+        task: 'You get a "New login" email',
+        steps: [
+          'Every time someone logs in with your PIN, you get an email saying when and on what device.',
+          'If it was you, ignore it.',
+          'If it was not you, tap the link in the email, then "Sign everyone out". Then call Otis to change your PIN.',
+        ],
+      },
+      {
+        task: 'Sign every device out',
+        steps: ['Open the Security tab and press "Sign everyone out". You will need your PIN again too.'],
+        note: 'Use it if you think someone saw your PIN, or you logged in on a phone that is not yours.',
+      },
+      {
+        task: 'You get an alert email',
+        steps: [
+          'Wrong PINs, paused logins, attempts to open your records without logging in, or a flood of fake form submissions each send an email.',
+          'Every attempt in these emails was already refused. Open the Security tab to see the details, and call Otis if they keep coming.',
+        ],
+      },
+    ],
+  },
+  {
     heading: 'Videos',
     blurb: 'Owner Photo Control, section 4. Videos show on the front page for every customer.',
     items: [

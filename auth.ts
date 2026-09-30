@@ -7,7 +7,9 @@
 import type express from "express";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
+import express_ from "express";
 import { logEvent } from "./logger";
+import { recordSecurityEvent, securitySummary, signOutAll, checkRevokeToken } from "./security";
 
 const SHOP_OWNER_PIN  = process.env.SHOP_OWNER_PIN  || "1234";
 export const SHOP_API_SECRET = process.env.SHOP_API_SECRET || "";
@@ -20,6 +22,11 @@ export const SHOP_API_SECRET = process.env.SHOP_API_SECRET || "";
  */
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const sessions = new Map<string, number>(); // key -> expiry time
+
+/** Ends every owner login at once ("Sign everyone out"). */
+export function revokeAllSessions(): void {
+  sessions.clear();
+}
 
 function newSession(): string {
   const now = Date.now();
@@ -46,6 +53,7 @@ export function requireAdmin(req: express.Request, res: express.Response, next: 
   if (!SHOP_API_SECRET) return next();
   const token = String(req.headers["x-shop-secret"] || "");
   if (!token || !isOwner(token)) {
+    recordSecurityEvent("unauthorized", req, `${req.method} ${req.path}`);
     return res.status(401).json({ error: "Unauthorized." });
   }
   next();
@@ -65,7 +73,10 @@ export function registerAuthRoutes(app: express.Express) {
     skipSuccessfulRequests: true,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: "Too many wrong PINs from this device. Wait 15 minutes and try again." },
+    handler: (req, res) => {
+      recordSecurityEvent("login_limited", req);
+      res.status(429).json({ error: "Too many wrong PINs from this device. Wait 15 minutes and try again." });
+    },
   });
   const PIN_LOCKOUT_FAILURES = Number(process.env.PIN_LOCKOUT_FAILURES) || 30;
   let pinFailures: number[] = [];
@@ -80,14 +91,55 @@ export function registerAuthRoutes(app: express.Express) {
     if (!pin || !sameSecret(pin, SHOP_OWNER_PIN)) {
       pinFailures = pinFailures.filter((t) => t > now - 60 * 60 * 1000);
       pinFailures.push(now);
+      recordSecurityEvent("login_failed", req);
       if (pinFailures.length >= PIN_LOCKOUT_FAILURES) {
         pinLockedUntil = now + 60 * 60 * 1000;
         pinFailures = [];
         logEvent("error", "auth.pin_lockout", { failures: PIN_LOCKOUT_FAILURES });
+        recordSecurityEvent("lockout", req);
       }
       return res.status(401).json({ error: "Invalid PIN. Access denied." });
     }
+    recordSecurityEvent("login_ok", req);
     res.json({ token: newSession() });
+  });
+
+  /* ---- The Security tab ------------------------------------------------ */
+  app.get("/api/security", requireAdmin, (_req, res) => res.json(securitySummary()));
+
+  app.post("/api/security/signout-all", requireAdmin, (req, res) => {
+    signOutAll(req, "Security tab button");
+    res.json({ ok: true });
+  });
+
+  /*
+   * The "wasn't you?" link in the new-login email. Opening it only shows a
+   * button: email apps open links on their own to scan them, and that must
+   * never sign Paul out by itself. The button does it.
+   */
+  const page = (body: string) =>
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The Frame Shop</title>` +
+    `<body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#18181b"><h1 style="font-size:1.3rem">The Frame Shop — Command Center</h1>${body}</body>`;
+  const safe = (t: string) => t.replace(/[^\w.-]/g, "");
+
+  app.get("/api/security/revoke", (req, res) => {
+    const t = safe(String(req.query.t || ""));
+    res.type("html").send(page(
+      `<p>Sign every device out of your Command Center? Anyone logged in, including you, will need the PIN again.</p>` +
+      `<form method="post" action="/api/security/revoke"><input type="hidden" name="t" value="${t}">` +
+      `<button style="font:inherit;padding:.7rem 1.2rem;background:#ea580c;color:#fff;border:0;border-radius:4px">Sign everyone out</button></form>`
+    ));
+  });
+
+  app.post("/api/security/revoke", express_.urlencoded({ extended: false, limit: "2kb" }), (req, res) => {
+    const t = safe(String(req.body?.t || ""));
+    if (!checkRevokeToken(t)) {
+      return res.status(400).type("html").send(page(
+        `<p>This link has expired or was already used. To sign everyone out, open the Command Center's Security tab, or call Otis.</p>`
+      ));
+    }
+    signOutAll(req, "Link in the new-login email");
+    res.type("html").send(page(`<p><strong>Done.</strong> Every device has been signed out. Ask Otis to change your PIN.</p>`));
   });
 }
 
