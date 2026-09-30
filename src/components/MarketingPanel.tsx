@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Sparkles, Send, Copy, Check, Smartphone, Trash2, RefreshCw, Megaphone, Inbox, Star, MailPlus, Radar, CalendarDays, Settings, BarChart3, ExternalLink } from 'lucide-react';
 import { safeFetch } from '../utils/api';
 import { PostPreview, PREVIEW_CHANNELS, type PickedMedia, type PreviewChannel } from './PostPreview';
+import { aiTells } from '../utils/aiTells';
 
 type AgentId = 'content' | 'reply' | 'review_reply' | 'review_request' | 'campaign' | 'radar';
 
@@ -318,13 +319,21 @@ export const MarketingPanel: React.FC<{ onDataChanged?: () => void }> = ({ onDat
                   id={`body-${d.id}`}
                   defaultValue={d.body}
                   rows={Math.min(14, Math.max(4, d.body.split('\n').length + 1))}
-                  onChange={(e) => previewing[d.id] && setLiveText((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                  onChange={(e) => setLiveText((prev) => ({ ...prev, [d.id]: e.target.value }))}
                   onBlur={(e) => e.target.value !== d.body && patch(d.id, { body: e.target.value })}
                   className={`${input} whitespace-pre-wrap`}
                 />
                 {/\[ask Paul/i.test(d.body) && (
                   <p className="text-[11px] text-amber-300 mt-1">Fill in the [ask Paul: …] parts before this goes out.</p>
                 )}
+                {(() => {
+                  const tells = aiTells(`${d.subject ?? ''}\n${liveText[d.id] ?? d.body}`);
+                  return tells.length > 0 && d.channel !== 'brief' ? (
+                    <p className="text-[11px] text-amber-300 mt-1" data-testid="ai-tells">
+                      Sounds machine-written: {tells.join(', ')}. Say it the way you would to a rider.
+                    </p>
+                  ) : null;
+                })()}
               </div>
               {!!d.hashtags?.length && <p className="text-xs text-sky-300 break-words">{d.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}</p>}
               {d.videoPlan && (

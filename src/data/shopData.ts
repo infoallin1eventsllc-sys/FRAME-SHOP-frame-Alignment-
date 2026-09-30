@@ -248,7 +248,7 @@ export const FAQS = [
   },
   {
     q: "Why isn't a factory stock motorcycle frame always straight?",
-    a: "Factory production tolerances allow small margins of error. When you add high-torque engines, upgraded suspension, or aggressive cornering, these minor offsets multiply. Additionally, minor tip-overs, pothole impacts, or engine removals frequently pull motor mounts and swingarms out of true alignment."
+    a: "Factory production tolerances allow small margins of error. When you add high-torque engines, upgraded suspension, or aggressive cornering, these minor offsets multiply. A tip-over, a hard pothole or pulling the engine can also knock the motor mounts and swingarm out of line."
   },
   {
     q: "Do I need an appointment for service?",

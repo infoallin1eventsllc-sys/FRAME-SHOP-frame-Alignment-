@@ -348,4 +348,24 @@ test.describe('Marketing Desk', () => {
     // Email drafts have no phone preview.
     await expect(page.getByTestId('draft').filter({ hasText: /email/i }).getByRole('button', { name: 'Preview on phone' })).toHaveCount(0);
   });
+
+  test('a draft that sounds machine-written is flagged until Paul rewords it', async ({ page }) => {
+    // The assistants are told the list too.
+    expect((await page.request.post('/api/marketing/run/content', { data: {} })).ok()).toBe(true);
+    expect(aiCalls.some((c) => String(c.body?.system).includes('"delve"') && String(c.body?.system).includes('I hope this helps'))).toBe(true);
+
+    await page.goto('/');
+    await page.locator('footer button:has-text("Owner Login")').click();
+    await page.getByPlaceholder('Enter PIN').fill('1234');
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: /✨ Marketing/ }).click();
+    const card = page.getByTestId('draft').filter({ hasText: 'Road Glide wobble fixed' }).first();
+    await expect(card).toBeVisible();
+    const box = card.getByLabel(/Text — edit freely/);
+    await box.fill("Moreover, let's delve into why this Road Glide wobbled.");
+    await expect(card.getByTestId('ai-tells')).toContainText('delve');
+    await expect(card.getByTestId('ai-tells')).toContainText('moreover');
+    await box.fill('This Road Glide wobbled at 70. The motor mounts were out. It rides straight now.');
+    await expect(card.getByTestId('ai-tells')).toHaveCount(0);
+  });
 });

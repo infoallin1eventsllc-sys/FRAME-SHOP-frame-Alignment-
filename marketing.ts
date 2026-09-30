@@ -186,6 +186,7 @@ export function registerMarketing(app: express.Express, deps: MarketingDeps) {
 4. Mention a price only if it appears in the FACT SHEET, worded as it appears there.
 5. Never include a customer's real name or contact details. Where a greeting needs a name, write {first_name}.
 6. Write for The Frame Shop's riders in the brand voice. No emojis unless the brand voice asks for them.
+7. Sound like Paul talking in his shop, not like an AI. Plain, specific, short. Never use: "in today's fast-paced world"; "delve"; "tapestry"; "it's not X, it's Y"; "not only X but also Y"; "additionally", "moreover", "furthermore"; "let's break it down"; "the key takeaway"; "challenges and opportunities"; "a testament to"; "underscores the importance of"; "I hope this helps"; corporate buzzwords (leverage, seamless, cutting-edge, game-changer, elevate, unlock). Don't praise the question, don't claim "experts agree" or "studies show", don't make things sound more important than they are, don't force lists of three, don't explain the obvious, don't add long asides, and vary sentence length.
 Answer with one JSON object only, no other text.`;
 
   const system = (d: MarketingData, job: string) =>
