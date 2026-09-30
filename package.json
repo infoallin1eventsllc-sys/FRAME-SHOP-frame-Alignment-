@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "build:demo": "vite build --mode demo --outDir dist-demo",
     "build:preview": "npm run build:demo && node scripts/build-preview.mjs preview.html dist-demo",
-    "diagnose": "npm run build && node scripts/diagnose.mjs"
+    "diagnose": "npm run build && node scripts/diagnose.mjs",
+    "check:portal": "npm run build && node scripts/command-center-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

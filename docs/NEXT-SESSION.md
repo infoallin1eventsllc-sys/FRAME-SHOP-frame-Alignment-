@@ -23,6 +23,7 @@ npm run dev                 # site + server on http://localhost:3000
 npm run build               # production build (dist/)
 npm run build:preview       # the single-file demo page -> preview.html
 npm run diagnose            # whole-site check -> diagnostic-report/report.md
+npm run check:portal        # uses every Command Center feature, start to finish
 ```
 
 Tests run against a server you start yourself. For all 128 to run (none
@@ -81,6 +82,16 @@ misses a change — if a test sees old behaviour, restart the server.
   failed requests, security-policy blocks, sideways scrolling, broken links,
   accessibility (axe, WCAG 2.1 AA). Last run: **no problems found**. It caught
   unlabelled invoice-editor fields and buttons, now fixed.
+
+- Command Center check (`npm run check:portal`, `scripts/command-center-check.mjs`):
+  production build with owner login on and an email stand-in; clicks through
+  31 steps — login, work orders, the whole invoice (payments, PDF, email, Excel),
+  messages, marketing, rates, photos and videos, security, help — and fails on
+  any JavaScript or server error. Last run: **all 31 pass**. It caught the
+  unlabelled tech-notes box, now fixed.
+- The Photos & Videos tab lives in `src/components/OwnerMediaPanel.tsx`
+  (moved out of `ShopAdminPortal.tsx`, which is now ~1,900 lines). The portal
+  keeps it mounted but hidden on other tabs so a video upload keeps going.
 
 - Marketing drafts are checked for machine-sounding phrases ("delve",
   "moreover", "it's not X — it's Y", "I hope this helps", buzzwords…):
