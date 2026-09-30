@@ -72,6 +72,14 @@ Open the website, tap **Owner Login** at the bottom of the page, and enter your 
 
 ## Part 4 — Getting paid
 
+**How invoicing works.** Your invoices run entirely inside the website. You don't need Excel or any other program.
+
+- **Create:** open a job in Work Orders and create the invoice. It starts from your prices in My Rates and works out the supplies, tax, total and balance for you.
+- **Save:** every invoice is kept on the website with its job.
+- **Send:** download it as a PDF, email the PDF to the customer, or email them a card pay link.
+- **Get paid:** a card payment through the pay link marks the invoice paid by itself. Cash or check you record yourself, and the balance updates.
+- **Excel (optional):** the Excel buttons just save a spreadsheet copy for your records or your accountant. You don't need an Excel account, and it opens in Excel, Google Sheets or Apple Numbers. If you never use it, invoicing works exactly the same.
+
 Use your own email address as the customer, so every invoice comes to you. For anything that
 takes a real card, use a small amount ($1–$5), then refund it in Shopify afterwards.
 
@@ -87,7 +95,7 @@ takes a real card, use a small amount ($1–$5), then refund it in Shopify after
     back up.
 25. [ ] **Download PDF**, **System Print**, and **Bluetooth Print** (if you have the receipt
     printer). ✅ Each shows the shop's real address and phone.
-26. [ ] **Invoices Excel.** ✅ The spreadsheet opens and shows what's been paid and what's still owed.
+26. [ ] **Invoices Excel** (optional). ✅ The spreadsheet opens and shows what's been paid and what's still owed.
 
 ## Part 5 — Marketing
 
