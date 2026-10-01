@@ -1,6 +1,6 @@
 # The Frame Shop — where things stand
 
-Last updated 29 September 2026. Start here next session.
+Last updated 30 September 2026. Start here next session.
 
 ## Where the work is
 
@@ -43,6 +43,19 @@ RESEND_API_URL=http://127.0.0.1:4599/emails npx playwright test
 The tests start their own stand-ins for Resend (port 4599) and Claude (4598),
 so nothing reaches a real account. The dev server's file watcher sometimes
 misses a change — if a test sees old behaviour, restart the server.
+
+## State at the end of 30 Sep
+
+- Command Center checked end to end: `npm run check:portal` — all 31 steps pass.
+  Fixed: the tech-notes box had no label. Photos & Videos moved into
+  `src/components/OwnerMediaPanel.tsx`; behaviour unchanged.
+- Security watch is built: new-login emails with a sign-everyone-out link,
+  alarms for wrong PINs / lockouts / refused requests / form floods, and a
+  Security tab (`security.ts`, `src/components/SecurityPanel.tsx`).
+- 128 of 128 tests pass (run with the switches shown above, or 18 are skipped);
+  `npm run diagnose`: no problems. Demo republished (version 26).
+- Waiting on Otis: share the documents and demo from their Share menus; try
+  Download PDF once in the real demo viewer; merge PR #2; deploy on Paul's accounts.
 
 ## State at the end of 29 Sep
 
