@@ -28,13 +28,13 @@ export const WhyChooseUs: React.FC<WhyChooseUsProps> = ({ onOpenBooking }) => {
         {/* Narrative / Context Block */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 items-stretch">
           
-          <div className="bg-zinc-900 p-8 rounded-none border border-zinc-800 flex flex-col justify-between shadow-xl">
+          <div className="bg-zinc-900 p-8 rounded-none border border-zinc-800 flex flex-col justify-between shadow-sm">
             <div>
               <div className="flex items-center gap-2 text-orange-600 font-bold text-xs uppercase tracking-widest mb-3">
                 <Flame className="w-4 h-4 text-orange-600" />
                 <span>The Industry Reality</span>
               </div>
-              <h3 className="text-2xl font-black text-zinc-100 mb-4 uppercase italic">
+              <h3 className="text-2xl font-bold text-zinc-100 mb-4 uppercase">
                 High Horsepower Demands Precision Chassis Alignment
               </h3>
               <p className="text-zinc-300 text-sm leading-relaxed font-normal mb-4">
@@ -51,13 +51,13 @@ export const WhyChooseUs: React.FC<WhyChooseUsProps> = ({ onOpenBooking }) => {
             </div>
           </div>
 
-          <div className="bg-zinc-900 p-8 rounded-none border border-zinc-800 flex flex-col justify-between shadow-xl relative">
+          <div className="bg-zinc-900 p-8 rounded-none border border-zinc-800 flex flex-col justify-between shadow-sm relative">
             <div>
               <div className="flex items-center gap-2 text-orange-600 font-bold text-xs uppercase tracking-widest mb-3">
                 <Wrench className="w-4 h-4 text-orange-600" />
                 <span>The Paul Hurey Difference</span>
               </div>
-              <h3 className="text-2xl font-black text-zinc-100 mb-4 uppercase italic">
+              <h3 className="text-2xl font-bold text-zinc-100 mb-4 uppercase">
                 Paul Hurey’s Master Craft
               </h3>
               <p className="text-zinc-300 text-sm leading-relaxed font-normal mb-4">
@@ -85,9 +85,9 @@ export const WhyChooseUs: React.FC<WhyChooseUsProps> = ({ onOpenBooking }) => {
         </div>
 
         {/* Factory vs Frame Shop Comparison Matrix */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-none p-6 sm:p-8 mb-16 shadow-2xl">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-none p-6 sm:p-8 mb-16 shadow-sm">
           <div className="text-center max-w-xl mx-auto mb-8">
-            <h3 className="text-2xl font-black text-zinc-100 uppercase italic">
+            <h3 className="text-2xl font-bold text-zinc-100 uppercase">
               Factory Stock vs. The Frame Shop Aligned
             </h3>
             <p className="text-xs text-zinc-400 font-normal mt-1 uppercase tracking-wider">
@@ -155,7 +155,7 @@ export const WhyChooseUs: React.FC<WhyChooseUsProps> = ({ onOpenBooking }) => {
         {/* 4 Core Values Grid */}
         <div>
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-black text-zinc-100 uppercase italic">
+            <h3 className="text-2xl font-bold text-zinc-100 uppercase">
               Our Core Pillars
             </h3>
           </div>
@@ -170,7 +170,7 @@ export const WhyChooseUs: React.FC<WhyChooseUsProps> = ({ onOpenBooking }) => {
                   <div className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">
                     {val.subtitle}
                   </div>
-                  <h4 className="text-base font-black text-zinc-100 uppercase italic group-hover:text-orange-500 transition-colors">
+                  <h4 className="text-base font-bold text-zinc-100 uppercase group-hover:text-orange-500 transition-colors">
                     {val.title}
                   </h4>
                   <p className="text-xs text-zinc-400 font-normal mt-2 leading-relaxed">

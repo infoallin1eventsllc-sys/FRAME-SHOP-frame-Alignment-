@@ -86,7 +86,7 @@ export const Services: React.FC<ServicesProps> = ({ onSelectServiceForBooking })
           {filteredServices.map(service => (
             <div
               key={service.id}
-              className="bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-orange-600 rounded-none p-6 transition-all group flex flex-col justify-between shadow-md hover:shadow-xl relative"
+              className="bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-orange-600 rounded-none p-6 transition-all group flex flex-col justify-between shadow-md hover:shadow-sm relative"
             >
               {/* Highlight badge for core services */}
               {service.category === 'core' && (
@@ -101,7 +101,7 @@ export const Services: React.FC<ServicesProps> = ({ onSelectServiceForBooking })
                     {getServiceIcon(service.iconName)}
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-zinc-900 uppercase italic group-hover:text-orange-600 transition-colors">
+                    <h3 className="text-lg font-bold text-zinc-900 uppercase group-hover:text-orange-600 transition-colors">
                       {service.title}
                     </h3>
                   </div>
@@ -151,7 +151,7 @@ export const Services: React.FC<ServicesProps> = ({ onSelectServiceForBooking })
         {/* Detailed Service Modal */}
         {selectedService && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-md">
-            <div className="bg-white border border-zinc-200 rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div className="bg-white border border-zinc-200 rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-sm relative max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setSelectedService(null)}
                 className="absolute top-4 right-4 p-2 text-zinc-500 hover:text-zinc-900 rounded-none hover:bg-zinc-100 transition-colors"
@@ -164,7 +164,7 @@ export const Services: React.FC<ServicesProps> = ({ onSelectServiceForBooking })
                   {getServiceIcon(selectedService.iconName)}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-zinc-900 uppercase italic">
+                  <h3 className="text-2xl font-bold text-zinc-900 uppercase">
                     {selectedService.title}
                   </h3>
                 </div>

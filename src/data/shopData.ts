@@ -1,4 +1,4 @@
-import { ServiceItem, WorkProject, Testimonial } from '../types';
+import { ServiceItem, WorkProject } from '../types';
 
 export const SHOP_INFO = {
   name: "The Frame Shop",
@@ -9,10 +9,12 @@ export const SHOP_INFO = {
   address: "7531 Unit C Root Road, Spring, Texas 77389",
   phone: "(832) 628-5226",
   phoneRaw: "8326285226",
+  email: "theframeshop13@gmail.com",
   hours: "Tuesday through Saturday by appointment only",
   instagramHandle: "@_theframeshop",
   instagramUrl: "https://www.instagram.com/_theframeshop/",
-  mapEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3448.818!2d-95.5398!3d30.1084!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x864735c05c05c05c%3A0x0!2s7531+Root+Rd+Unit+C%2C+Spring%2C+TX+77389!5e0!3m2!1sen!2sus!4v1680000000000!5m2!1sen!2sus"
+  // Built from the street address, so the pin is wherever Google puts that address.
+  mapEmbedUrl: "https://www.google.com/maps?q=7531+Root+Rd+Unit+C,+Spring,+TX+77389&output=embed"
 };
 
 export const CORE_VALUES = [
@@ -240,36 +242,6 @@ export const WORK_PROJECTS: WorkProject[] = [
   }
 ];
 
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    id: "rev-1",
-    riderName: "Mark 'Big Mac' Sullivan",
-    bikeInfo: "2021 Harley-Davidson Street Glide CVO",
-    location: "Houston, TX",
-    rating: 5,
-    quote: "I took my CVO to two dealership service centers for a high-speed wobble above 70mph. Both told me 'that’s just bagger wind flex.' Paul at The Frame Shop put it on his laser jig, found the motor mount 11mm out of alignment, and fixed it in two days. The bike tracks like an arrow now at 90mph. Paul is a true master.",
-    verifiedService: "Power Train Alignment & Laser Scan"
-  },
-  {
-    id: "rev-2",
-    riderName: "Dave R.",
-    bikeInfo: "Custom 124ci Performance FXR",
-    location: "Spring, TX",
-    rating: 5,
-    quote: "When you build a high-horsepower bike, you can’t trust guesswork. Paul knows frame geometry inside and out. He straightened my neck, aligned my swingarm, and gave me exact specs before and after. Honest, straight-shooter, and unmatched quality.",
-    verifiedService: "Frame Repair & Neck Straightening"
-  },
-  {
-    id: "rev-3",
-    riderName: "Jason K.",
-    bikeInfo: "2019 Harley Road Glide Special",
-    location: "The Woodlands, TX",
-    rating: 5,
-    quote: "The Frame Shop is the only place I will ever let touch my bike's chassis or suspension. Paul treats your motorcycle like his own. Honest pricing, incredible attention to detail, and a guy who actually rides what he builds.",
-    verifiedService: "Suspension Tuning & Brake Audit"
-  }
-];
-
 export const FAQS = [
   {
     q: "How do I know if my motorcycle frame or powertrain is out of alignment?",
@@ -277,7 +249,7 @@ export const FAQS = [
   },
   {
     q: "Why isn't a factory stock motorcycle frame always straight?",
-    a: "Factory production tolerances allow small margins of error. When you add high-torque engines, upgraded suspension, or aggressive cornering, these minor offsets multiply. Additionally, minor tip-overs, pothole impacts, or engine removals frequently pull motor mounts and swingarms out of true alignment."
+    a: "Factory production tolerances allow small margins of error. When you add high-torque engines, upgraded suspension, or aggressive cornering, these minor offsets multiply. A tip-over, a hard pothole or pulling the engine can also knock the motor mounts and swingarm out of line."
   },
   {
     q: "Do I need an appointment for service?",
@@ -286,5 +258,9 @@ export const FAQS = [
   {
     q: "What types of motorcycles do you work on?",
     a: "We specialize in Harley-Davidson (Baggers, FXRs, Dynas, Softails), Indian Motorcycles, Performance Cruisers, Custom Choppers, and Classic V-Twins. We also handle frame diagnostics for custom builds and crashed motorcycles."
+  },
+  {
+    q: "How will I know when my bike is ready?",
+    a: "When you book, you get a ticket number. Tap Track Ticket at the top of this site (Tracker at the bottom on a phone) and enter it (or the phone number you booked with) any time to see where your bike is: pending review, confirmed, in the shop on the lift, or completed and ready for pickup."
   }
 ];

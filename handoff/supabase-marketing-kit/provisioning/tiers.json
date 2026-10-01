@@ -1,0 +1,37 @@
+{
+  "_comment": "What a client's agent can do, by size of business. Tiers are configuration over ONE shared codebase — never a fork. A bigger client enables more; it does not get different code.",
+
+  "solo": {
+    "label": "Solo operator",
+    "fits": "One person, no staff. A shop, a studio, a single practitioner.",
+    "channels": ["content"],
+    "task_types": ["follow_up_lead", "generate_content"],
+    "weekly_content_target": 2,
+    "follow_up_within_hours": 24,
+    "autonomy": "draft",
+    "notes": "Everything is drafted for the owner to approve. They are the only approver, so the queue must stay small enough to clear between jobs."
+  },
+
+  "staffed": {
+    "label": "Staffed business",
+    "fits": "An owner plus a few people. Someone other than the owner handles the inbox.",
+    "channels": ["content", "email", "sms"],
+    "task_types": ["follow_up_lead", "generate_content", "publish_content", "send_email", "send_sms"],
+    "weekly_content_target": 5,
+    "follow_up_within_hours": 8,
+    "autonomy": "draft",
+    "notes": "Sending turns on here, which means consent turns on here. Do not enable email or sms until the intake form asks for consent and the client has agreed to how it is worded."
+  },
+
+  "multi_location": {
+    "label": "Multiple locations or teams",
+    "fits": "More than one site, or leads that must reach a particular person.",
+    "channels": ["content", "email", "sms"],
+    "task_types": ["follow_up_lead", "generate_content", "publish_content", "send_email", "send_sms"],
+    "weekly_content_target": 10,
+    "follow_up_within_hours": 4,
+    "autonomy": "draft",
+    "requires": ["routing"],
+    "notes": "Routing does not exist yet — leads currently land in one queue with no owner. See README: this tier is not deliverable until that is built."
+  }
+}
