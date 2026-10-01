@@ -154,7 +154,14 @@ test.describe('Third parties load only when asked', () => {
     expect(google, 'map requested before the visitor asked').toEqual([]);
 
     await page.getByRole('button', { name: 'Show map' }).click();
-    await expect(page.locator('iframe[title*="Location Map"]')).toBeVisible();
+    const map = page.locator('iframe[title*="Location Map"]');
+    await expect(map).toBeVisible();
+    await expect(map).toHaveAttribute('src', /7531\+Root\+Rd/);
+
+    // Never a dead box: a way out stays under the map, and Hide map brings the buttons back.
+    await expect(page.getByRole('link', { name: 'Open in Google Maps' })).toHaveAttribute('href', /7531/);
+    await page.getByRole('button', { name: 'Hide map' }).click();
+    await expect(page.getByTestId('map-placeholder')).toBeVisible();
   });
 
   test('Vimeo videos play with do-not-track on', () => {

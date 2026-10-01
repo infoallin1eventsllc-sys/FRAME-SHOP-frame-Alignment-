@@ -22,19 +22,34 @@ interface ClickToLoadMapProps {
 export const ClickToLoadMap: React.FC<ClickToLoadMapProps> = ({ embedUrl, address, title }) => {
   const [show, setShow] = useState(false);
   const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  // The demo runs inside a viewer that won't show other sites' pages in a
+  // frame, so there the map opens in its own tab instead of a blank box.
+  const canEmbed = import.meta.env.MODE !== 'demo';
 
   if (show) {
+    // A way out stays under the map, so if Google is slow or blocked the
+    // visitor is never left looking at an empty box.
     return (
-      <iframe
-        title={title}
-        src={embedUrl}
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        allowFullScreen={false}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
+      <div className="w-full h-full flex flex-col">
+        <iframe
+          title={title}
+          src={embedUrl}
+          className="w-full flex-1 min-h-0 bg-zinc-100"
+          style={{ border: 0 }}
+          allowFullScreen={false}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+        <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-zinc-200 bg-white text-[11px] font-black uppercase tracking-widest">
+          <a href={directions} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-zinc-800 hover:text-orange-600">
+            <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
+            Open in Google Maps
+          </a>
+          <button type="button" onClick={() => setShow(false)} className="text-zinc-500 hover:text-zinc-900 cursor-pointer">
+            Hide map
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -43,13 +58,24 @@ export const ClickToLoadMap: React.FC<ClickToLoadMapProps> = ({ embedUrl, addres
       <MapPin className="w-8 h-8 text-orange-600" aria-hidden="true" />
       <p className="text-sm font-bold text-zinc-800">{address}</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => setShow(true)}
-          className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2.5 cursor-pointer"
-        >
-          Show map
-        </button>
+        {canEmbed ? (
+          <button
+            type="button"
+            onClick={() => setShow(true)}
+            className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2.5 cursor-pointer"
+          >
+            Show map
+          </button>
+        ) : (
+          <a
+            href={directions}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2.5"
+          >
+            Show map
+          </a>
+        )}
         <a
           href={directions}
           target="_blank"
