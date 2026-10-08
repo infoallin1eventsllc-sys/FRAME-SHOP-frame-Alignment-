@@ -116,7 +116,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onNavigate }) => {
 
           {/* The clip, in its own black panel with nothing drawn over it. First on
               a phone, beside the words from laptop width up. */}
-          <div className="relative order-first lg:order-none lg:col-span-7">
+          <div className="relative order-first lg:order-last lg:col-span-7">
             <div className="relative aspect-video w-full bg-black overflow-hidden" aria-label="The Frame Shop hero video">
               {/* The video is always visible, showing the still as its poster until it
                   plays. The image above it is only for the fade between loops, so
