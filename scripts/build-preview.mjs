@@ -22,6 +22,10 @@ for (const png of ["meridian-logo-wordmark.png", "meridian-logo.png"]) {
   const file = path.join(dist, png);
   if (fs.existsSync(file)) js = js.split(`"/${png}"`).join(`"data:image/png;base64,${fs.readFileSync(file).toString("base64")}"`);
 }
+// The hero clip and its still are published beside the page, so their paths
+// must be relative to it rather than to the site root.
+js = js.split('"/video/').join('"video/');
+html = html.split('"/video/').join('"video/');
 // A literal </script> inside the bundle would end the inline tag early.
 js = js.split("</script").join("<\\/script");
 

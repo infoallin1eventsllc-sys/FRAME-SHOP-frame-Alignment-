@@ -1,6 +1,6 @@
 # The Frame Shop — where things stand
 
-Last updated 30 September 2026. Start here next session.
+Last updated 8 October 2026. Start here next session.
 
 ## Where the work is
 
@@ -43,6 +43,28 @@ RESEND_API_URL=http://127.0.0.1:4599/emails npx playwright test
 The tests start their own stand-ins for Resend (port 4599) and Claude (4598),
 so nothing reaches a real account. The dev server's file watcher sometimes
 misses a change — if a test sees old behaviour, restart the server.
+
+## State at the end of 8 Oct — the hero video
+
+- The homepage hero is now a video: a CGI bike that comes apart into its
+  components, reassembles and starts up (15 s, with sound). Generated in
+  Higgsfield (Kling 3.0, 4K) from stills made in Higgsfield — nothing of
+  anyone else's in it. Files: `public/video/hero-1080.mp4` (8.5 MB, the web
+  copy), `hero-poster.jpg` (first frame), `hero-captions.vtt` (sound captions).
+- Layout (`src/components/Hero.tsx`): words on the left, the clip in its own
+  black panel on the right with nothing drawn over it (no gradient, no orange
+  glow); first at full width on phones. The panel always shows the whole
+  frame. Plays once, holds on the idling bike, fades through the still, goes
+  again. "Hear it" button restarts with sound (browsers block sound until a
+  tap). Still as fallback; reduced motion = still + the button.
+- Owner Photo Control's "hero background" is now the still shown before the
+  clip plays and on browsers that can't play it. Default still is the clip's
+  first frame, so the Unsplash photo is gone.
+- The 4K master (3848×2152, 54 MB) is NOT in git. Otis has it saved from
+  Higgsfield. To serve it to desktops later, host it outside git (Supabase
+  storage or a CDN) and add it as a second `<source>`; the 1080p stays for phones.
+- Preview page used to approve the look: https://claude.ai/artifact/SJKiwYYZRsZE6o9mdqCj6S
+- Checks after the change: 31/31 Command Center, 128/128 tests, crawl clean.
 
 ## State at the end of 30 Sep
 

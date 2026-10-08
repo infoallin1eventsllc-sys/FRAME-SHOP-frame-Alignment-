@@ -56,7 +56,7 @@ export const OwnerMediaPanel: React.FC = () => {
       alert(e instanceof Error ? e.message : 'The photo could not be saved to the website.');
       return;
     }
-    setHeroMsg(note || 'Landing page hero background updated!');
+    setHeroMsg(note || 'Homepage still updated — it shows before the video plays.');
     setTimeout(() => setHeroMsg(''), 6000);
   };
 
@@ -94,7 +94,7 @@ export const OwnerMediaPanel: React.FC = () => {
       return;
     }
     setHeroImage(DEFAULT_HERO_IMAGE);
-    setHeroMsg('Hero photo removed — headline now shows on the plain dark background.');
+    setHeroMsg('Your photo was removed. The homepage shows the first frame of the video until you upload one.');
     setTimeout(() => setHeroMsg(''), 3000);
   };
 
@@ -479,10 +479,10 @@ export const OwnerMediaPanel: React.FC = () => {
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3 flex-wrap gap-2">
           <div>
             <div className="text-[10px] font-black uppercase text-orange-500 tracking-widest">
-              Landing Page Headline Image
+              Homepage Video Still
             </div>
             <h4 className="text-lg font-black text-zinc-100 uppercase italic">
-              1. HERO BACKGROUND IMAGE (TOP OF HOMEPAGE)
+              1. HOMEPAGE STILL (SHOWN BEFORE THE VIDEO PLAYS)
             </h4>
           </div>
           {heroMsg && (
@@ -495,7 +495,7 @@ export const OwnerMediaPanel: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           <div className="space-y-2">
             <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-              Current Live Hero Background:
+              Current Live Still:
             </div>
             <div className="relative h-56 bg-zinc-900 border border-zinc-800 overflow-hidden">
               {heroImage ? (
@@ -509,10 +509,10 @@ export const OwnerMediaPanel: React.FC = () => {
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-4 bg-zinc-950">
                   <Camera className="w-6 h-6 text-zinc-700" />
                   <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
-                    No hero photo set
+                    No photo set
                   </div>
                   <div className="text-[10px] text-zinc-600 leading-relaxed">
-                    The homepage headline is showing on the plain dark background
+                    The homepage shows the first frame of the video
                   </div>
                 </div>
               )}
@@ -600,7 +600,7 @@ export const OwnerMediaPanel: React.FC = () => {
               className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-orange-500 flex items-center gap-2 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Remove photo (plain dark background)</span>
+              <span>Remove photo (use the video's first frame)</span>
             </button>
           </div>
         </div>
