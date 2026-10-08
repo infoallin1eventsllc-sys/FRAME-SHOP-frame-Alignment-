@@ -44,6 +44,21 @@ The tests start their own stand-ins for Resend (port 4599) and Claude (4598),
 so nothing reaches a real account. The dev server's file watcher sometimes
 misses a change — if a test sees old behaviour, restart the server.
 
+## The client demo now lives off claude.ai
+
+- **Demo for Paul: https://frameshop-demo.vercel.app** — Vercel project
+  `frameshop-demo`, built from this branch with `FRAMESHOP_DEMO=1` (set on that
+  project only), which makes `npm run build:vercel` build the demo and copy
+  `demo-docs/` to `/docs`. Vercel login protection is OFF on it on purpose:
+  Paul has no account. Redeploy after pushing changes (no auto-deploy).
+- Paul's PDFs: `/docs/Frame-Shop-{Demo-and-Trial-Packet,Handoff-Plan,Photos-and-Videos,Trial-Checklist}.pdf`
+  (exported from the Claude Docs, letterhead included). Re-export and replace
+  `demo-docs/` if a document changes.
+- The other Vercel project, `the-frame-shop-website`, has Vercel login
+  protection ON — anyone without a Vercel account is asked to sign in. Turn it
+  off (or use a custom domain) before using it for the real site.
+- claude.ai links send outsiders to a Claude sign-in. Don't send them to clients.
+
 ## State at the end of 8 Oct — the hero video
 
 - The homepage hero is now a video: a CGI bike that comes apart into its
