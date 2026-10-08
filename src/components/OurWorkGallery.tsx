@@ -48,7 +48,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
           <div className="text-xs font-bold uppercase tracking-[0.3em] text-orange-600 flex items-center justify-center gap-2">
             <Camera className="w-4 h-4 text-orange-600" />
-            <span>Shop Portfolio &amp; Spec Specs</span>
+            <span>Shop Portfolio &amp; Measurements</span>
           </div>
           <h2 className="text-4xl sm:text-6xl font-black text-zinc-100 uppercase italic tracking-tighter">
             OUR WORK &amp; <span className="text-orange-600">ALIGNMENT SPECS</span>
@@ -86,7 +86,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
           {filteredProjects.map((proj) => (
             <div
               key={proj.id}
-              className="bg-zinc-900 border border-zinc-800 hover:border-orange-600/60 rounded-none overflow-hidden transition-all group shadow-xl flex flex-col justify-between"
+              className="bg-zinc-900 border border-zinc-800 hover:border-orange-600/60 rounded-none overflow-hidden transition-all group shadow-sm flex flex-col justify-between"
             >
               {/* Image & Badge Overlay */}
               <div className="relative h-64 sm:h-72 overflow-hidden bg-zinc-950">
@@ -94,6 +94,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
                   src={proj.imageUrl}
                   alt={proj.title}
                   referrerPolicy="no-referrer"
+                  onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter contrast-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80" />
@@ -105,7 +106,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
 
               {/* Card Body */}
               <div className="p-6 space-y-4">
-                <h3 className="text-2xl font-black text-zinc-100 uppercase italic tracking-tight group-hover:text-orange-500 transition-colors">
+                <h3 className="text-2xl font-bold text-zinc-100 uppercase tracking-tight group-hover:text-orange-500 transition-colors">
                   {proj.title}
                 </h3>
 
@@ -163,7 +164,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
         {/* Project Case Study Modal */}
         {selectedProject && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-zinc-950 border-2 border-zinc-800 rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div className="bg-zinc-950 border-2 border-zinc-800 rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-sm relative max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setSelectedProject(null)}
                 className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white transition-colors cursor-pointer"
@@ -175,7 +176,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
                 <span className="text-xs font-black text-orange-500 uppercase tracking-widest bg-zinc-900 border border-zinc-800 px-3 py-1">
                   {selectedProject.bikeModel}
                 </span>
-                <h3 className="text-3xl font-black text-zinc-100 uppercase italic mt-3">
+                <h3 className="text-3xl font-bold text-zinc-100 uppercase mt-3">
                   {selectedProject.title}
                 </h3>
               </div>
@@ -185,20 +186,21 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
                   src={selectedProject.imageUrl}
                   alt={selectedProject.title}
                   referrerPolicy="no-referrer"
+                  onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
                   className="w-full h-full object-cover"
                 />
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-xs font-black uppercase text-orange-500 tracking-wider mb-1">Rider Problem &amp; Diagnosis</h4>
+                  <h4 className="text-xs font-bold uppercase text-orange-500 tracking-wider mb-1">Rider Problem &amp; Diagnosis</h4>
                   <p className="text-zinc-300 text-sm font-normal leading-relaxed">
                     {selectedProject.description}
                   </p>
                 </div>
 
                 <div className="bg-zinc-900 p-4 rounded-none border border-zinc-800 space-y-3">
-                  <h4 className="text-xs font-black uppercase text-orange-500 tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold uppercase text-orange-500 tracking-wider flex items-center gap-1.5">
                     <Gauge className="w-4 h-4 text-orange-600" />
                     <span>Laser Alignment Measurements</span>
                   </h4>
@@ -215,7 +217,7 @@ export const OurWorkGallery: React.FC<OurWorkGalleryProps> = ({ onOpenBooking })
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-black uppercase text-orange-500 tracking-wider mb-1">Mechanical Resolution</h4>
+                  <h4 className="text-xs font-bold uppercase text-orange-500 tracking-wider mb-1">Mechanical Resolution</h4>
                   <p className="text-zinc-300 text-xs sm:text-sm font-normal leading-relaxed bg-zinc-900 p-3 rounded-none border border-zinc-800">
                     {selectedProject.beforeAfterSpec.keyFix}
                   </p>

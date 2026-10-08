@@ -121,7 +121,7 @@ test.describe('Owner portal', () => {
     await page.goto('/');
     const portal = await loginToPortal(page);
 
-    for (const tab of ['Work Orders', 'Owner Price Matrix', 'Owner Photo Control', 'How Do I']) {
+    for (const tab of ['Work Orders', 'Customer Messages', 'My Rates', 'Owner Photo Control', 'How Do I']) {
       await portal.locator(`button:has-text("${tab}")`).first().click();
       await expect(portal).not.toBeEmpty();
     }
@@ -174,12 +174,29 @@ test.describe('API surface', () => {
     expect((await request.get('/api/bookings/lookup?q=FS-000000')).status()).toBe(404);
     expect((await request.get('/api/bookings/lookup?q=832')).status()).toBe(400);
   });
+
+  test('deleting a ticket that does not exist is refused, not reported as done', async ({ request }) => {
+    // This route used to filter the list, save it, and answer 200 whatever
+    // happened — so the portal said "Booking removed" for a ticket it had never
+    // seen, and rewrote the whole file to change nothing. A missing id must not
+    // mutate anything, so this is safe to run against real data.
+    const before = await (await request.get('/api/bookings')).json();
+
+    const res = await request.delete('/api/bookings/no-such-ticket-id');
+    expect(res.status()).toBe(404);
+    expect((await res.json()).error).toMatch(/not found/i);
+
+    const after = await (await request.get('/api/bookings')).json();
+    expect(after.bookings.length).toBe(before.bookings.length);
+  });
 });
 
 test.describe('Layout', () => {
   test('navigation is reachable at every width, with no sideways scroll', async ({ page }) => {
     await page.goto('/');
-    for (const width of [1920, 1280, 1100, 900, 640, 390]) {
+    // 320px is the narrowest phone still in use. Its absence from this list is
+    // why the diagnostic tab row could push the page 31px sideways unnoticed.
+    for (const width of [1920, 1280, 1100, 900, 640, 390, 320]) {
       await page.setViewportSize({ width, height: 800 });
       await page.waitForTimeout(250);
 
@@ -193,6 +210,152 @@ test.describe('Layout', () => {
       );
       expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+test.describe('When the network fails, say so', () => {
+  test('a booking that never reaches the shop is not shown as confirmed', async ({ page }) => {
+    // The form used to answer a failed request with a random, made-up ticket
+    // number and a confirmation screen. The customer believed they were booked.
+    await page.route('**/api/bookings', (route) =>
+      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue()
+    );
+    await page.goto('/');
+    await page.locator('#hero-book-now-btn').click();
+    const modal = page.locator('div.fixed').last();
+    for (const input of await modal.locator('input').all()) {
+      const type = await input.getAttribute('type');
+      const ph = (await input.getAttribute('placeholder')) || '';
+      if (type === 'tel') await input.fill('8325550100');
+      else if (type === 'email') await input.fill('offline@example.com');
+      else if (/Full Name/i.test(ph)) await input.fill('Offline Rider');
+    }
+    await modal.locator('button[type="submit"]').last().click();
+
+    await expect(modal.getByText(/couldn't confirm your booking/i)).toBeVisible();
+    await expect(modal.locator('text=/FS-\\d+/')).toHaveCount(0);
+  });
+
+  test('a diagnostic that cannot be reached gives no diagnosis', async ({ page }) => {
+    // It used to show a fixed "engine mount misalignment" result, personalised
+    // with the rider's bike, whatever symptoms they had described.
+    await page.route('**/api/diagnostic', (route) => route.abort('internetdisconnected'));
+    await page.goto('/');
+    await page.getByRole('button', { name: /AI Laser Tech Advisor/i }).click();
+    await page.locator('textarea').first().fill('Front brake grabs and pulls hard to the left.');
+    await page.getByRole('button', { name: /Analyze with AI Laser Tech/i }).click();
+
+    await expect(page.getByText(/couldn't reach the diagnostic tool/i)).toBeVisible();
+    await expect(page.getByText(/Engine Mount Misalignment/i)).toHaveCount(0);
+  });
+});
+
+test.describe('Operations', () => {
+  test('the health check reports on bookings and storage, not just "ok"', async ({ request }) => {
+    const res = await request.get('/api/health');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.checks).toEqual({ bookings: 'ok', storage: 'ok' });
+    // Public route: it must not advertise how the site is configured.
+    expect(JSON.stringify(body)).not.toMatch(/secret|token|protected|shopify|gemini/i);
+  });
+
+  test('booking and diagnostic requests are rate limited', async ({ request }) => {
+    const res = await request.post('/api/bookings', { data: {} }); // 400, but counted
+    expect(res.headers()['ratelimit-limit'] ?? res.headers()['ratelimit-policy']).toBeTruthy();
+  });
+
+  test('pages and scripts are sent compressed', async ({ request }) => {
+    const res = await request.get('/', { headers: { 'Accept-Encoding': 'gzip' } });
+    expect(res.headers()['content-encoding']).toBe('gzip');
+  });
+
+  test('the booking list can be paged, and says how many there are in all', async ({ request }) => {
+    const all = await (await request.get('/api/bookings')).json();
+    const page = await (await request.get('/api/bookings?limit=2&offset=0')).json();
+    expect(page.total).toBe(all.bookings.length);
+    expect(page.bookings.length).toBe(Math.min(2, all.bookings.length));
+  });
+});
+
+test.describe('Hero and header', () => {
+  test('nothing in the hero sits under the fixed header, at any width', async ({ page }) => {
+    // The hero had a hardcoded 112px top pad; the fixed header is 89-146px
+    // depending on width, so the hero's badges slid under it at every desktop
+    // size. Measured at the top of the page, where hidden content is a bug and
+    // not normal scrolling.
+    await page.goto('/');
+    for (const width of [1920, 1440, 1280, 1024, 900, 768, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForTimeout(350);
+
+      const { headerBottom, badgesTop } = await page.evaluate(() => ({
+        headerBottom: document.querySelector('header')!.getBoundingClientRect().bottom,
+        // The hero's first row. Measured by a stable hook rather than by its
+        // text, which is mixed-case in source and uppercased by CSS.
+        badgesTop: document.querySelector('[data-testid="hero-badges"]')!.getBoundingClientRect().top,
+      }));
+      expect(badgesTop, `hero badges under the header at ${width}px`).toBeGreaterThanOrEqual(headerBottom);
+    }
+  });
+});
+
+test.describe('Shop videos', () => {
+  const CLIP = { id: 'autoplay-spec', title: 'Autoplay Spec Clip', url: '/spec-clip.webm' };
+
+  test.afterEach(async ({ request }) => {
+    await request.put('/api/videos', { data: [] });
+  });
+
+  test('a clip starts on its own, muted, looping, with a way to turn sound on', async ({ page, request }) => {
+    await request.put('/api/videos', { data: [CLIP] });
+    await page.goto('/');
+
+    const section = page.locator('#shop-videos');
+    await expect(section).toBeVisible();
+    const video = section.locator('video').first();
+    await expect(video).toHaveCount(1);
+
+    // These four together are what make a browser permit autostart. Drop
+    // `muted` and autoplay is silently refused everywhere — no error, just a
+    // frozen first frame — so each is asserted rather than assumed.
+    await expect(video).toHaveAttribute('autoplay', '');
+    await expect(video).toHaveAttribute('loop', '');
+    await expect(video).toHaveAttribute('playsinline', '');
+    expect(await video.evaluate((el: HTMLVideoElement) => el.muted)).toBe(true);
+
+    // Muted autostart is only acceptable if sound is one press away.
+    await expect(section.locator('button[aria-label^="Unmute"]')).toHaveCount(1);
+  });
+
+  test('the public list reads the shape the server sends', async ({ page, request }) => {
+    await request.put('/api/videos', { data: [CLIP] });
+    expect(Array.isArray(await (await request.get('/api/videos')).json())).toBe(true);
+
+    await page.goto('/');
+    await expect(page.locator('#shop-videos article')).toHaveCount(1);
+  });
+});
+
+test.describe('Markup integrity', () => {
+  test('no element id is used twice, and external links carry rel=noopener', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(600);
+
+    const report = await page.evaluate(() => {
+      const ids = [...document.querySelectorAll('[id]')].map((e) => e.id);
+      const duplicates = [...new Set(ids.filter((v, i) => ids.indexOf(v) !== i))];
+      const unsafe = [...document.querySelectorAll('a[target="_blank"]')]
+        .filter((a) => !(a.getAttribute('rel') || '').includes('noopener'))
+        .map((a) => (a as HTMLAnchorElement).href);
+      return { duplicates, unsafe };
+    });
+
+    // The Logo SVG carried an unused linearGradient id and renders three times
+    // per page, so one dead definition produced three clashing ids.
+    expect(report.duplicates, `duplicate id(s): ${report.duplicates.join(', ')}`).toEqual([]);
+    expect(report.unsafe, `target=_blank without rel=noopener: ${report.unsafe.join(', ')}`).toEqual([]);
   });
 });
 

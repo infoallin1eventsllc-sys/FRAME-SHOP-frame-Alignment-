@@ -71,6 +71,32 @@ export const OWNER_GUIDE: GuideSection[] = [
     ],
   },
   {
+    heading: 'Keeping Your Command Center Safe',
+    blurb: 'The website blocks break-in attempts on its own. The Security tab shows what it blocked.',
+    items: [
+      {
+        task: 'You get a "New login" email',
+        steps: [
+          'Every time someone logs in with your PIN, you get an email saying when and on what device.',
+          'If it was you, ignore it.',
+          'If it was not you, tap the link in the email, then "Sign everyone out". Then call Otis to change your PIN.',
+        ],
+      },
+      {
+        task: 'Sign every device out',
+        steps: ['Open the Security tab and press "Sign everyone out". You will need your PIN again too.'],
+        note: 'Use it if you think someone saw your PIN, or you logged in on a phone that is not yours.',
+      },
+      {
+        task: 'You get an alert email',
+        steps: [
+          'Wrong PINs, paused logins, attempts to open your records without logging in, or a flood of fake form submissions each send an email.',
+          'Every attempt in these emails was already refused. Open the Security tab to see the details, and call Otis if they keep coming.',
+        ],
+      },
+    ],
+  },
+  {
     heading: 'Videos',
     blurb: 'Owner Photo Control, section 4. Videos show on the front page for every customer.',
     items: [
@@ -84,10 +110,10 @@ export const OWNER_GUIDE: GuideSection[] = [
         note: 'The title fills in from the file name. Change it if you want something better.',
       },
       {
-        task: 'Post a video from YouTube instead',
+        task: 'Post a video from YouTube (or Vimeo) instead',
         steps: [
           'Put the video on YouTube. Set it to Unlisted if you do not want it on your channel.',
-          'Copy the link, paste it in the link box, add a title, click "Add Video By Link".',
+          'Tap "Already on YouTube? Add it by link instead", paste the link, give it a name, then tap "Put It On The Website".',
         ],
         note: 'Best choice for older phone videos. No size limit and it plays on every device.',
       },
@@ -138,39 +164,104 @@ export const OWNER_GUIDE: GuideSection[] = [
   },
   {
     heading: 'Getting Paid',
-    blurb: 'Money is handled in Shopify. The website raises the invoice and keeps track of who has paid.',
+    blurb: 'Online payments go through Shopify. The website raises the invoice and keeps track of what has been paid.',
     items: [
       {
         task: 'Bill a customer for a finished job',
         steps: [
           'Open Work Orders and find the job.',
-          'Click "Create Owner Invoice" and add the labour and parts lines.',
-          'Send it. The customer gets an email with a link to pay.',
+          'Click "Create Owner Invoice". It starts with the booked service at your price from My Rates.',
+          'Add more lines with "Add from my rates" or "Add Custom Item", then click "Save Invoice".',
+          'To send it, pick one:',
+          '"Email PDF" — emails the customer the invoice as a PDF. When they reply, it lands in the shop\'s Gmail.',
+          '"Email Pay Link" — Shopify emails them a link to pay the balance online by card.',
+          '"Download PDF" — saves the PDF so you can text it, print it or hand it over.',
         ],
-        note: 'When they pay, the job marks itself as paid here. You do not have to come back and tick anything off.',
+        note: 'Supplies and sales tax are included, and any deposit already paid is taken off. An online payment marks the job paid by itself; money taken in person you record yourself (below).',
       },
       {
         task: 'Take a payment at the counter',
-        steps: ['Use the Shopify app or card reader, the same as any other sale.'],
-        note: 'The website does not take cards itself — Shopify does, so all your takings stay in one place for the bookkeeper.',
+        steps: [
+          'Take the money as usual — cash, check, or your card reader.',
+          'Open the job\'s invoice, enter the amount under "Payments received", choose how they paid, and click "Record payment".',
+        ],
+        note: 'A sale rung up on the Shopify app is not linked to the job, so record it here as "Card in shop" too. Made a typing mistake? The bin icon next to a payment you entered removes it.',
       },
       {
         task: 'Get your numbers into a spreadsheet',
-        steps: ['Click "Invoices Excel" or "Matrix Excel" to download for your bookkeeper.'],
+        steps: ['On Work Orders, click "Invoices Excel". On My Rates, click "Excel" for your price list.'],
+      },
+    ],
+  },
+  {
+    heading: 'Your Marketing',
+    blurb: 'Open "Marketing". Assistants draft the work; you approve every word before anything goes out.',
+    items: [
+      {
+        task: 'Get the week\'s posts written',
+        steps: [
+          'Marketing → "Run an assistant" → Content planner → Run.',
+          'Open "To approve". Read each post, change anything, fill in any [ask Paul: …] gaps.',
+          'Press Approve, then Copy, paste it into Instagram, Facebook, TikTok or Google, and press Mark posted.',
+        ],
+        note: 'Posts are written from your finished jobs and your notes on them. The more you write in the tech notes, the better the posts get. TikTok drafts come with a "Video to film" plan: film the shots in order on your phone, upright, then post it in the TikTok app with the caption.',
+      },
+      {
+        task: 'Answer customer messages faster',
+        steps: [
+          'Run "Inbox replies". Each waiting message gets a drafted answer.',
+          'Edit it, press Approve, then Send email — or Copy it into a text if they left a phone number.',
+        ],
+      },
+      {
+        task: 'Get more Google reviews',
+        steps: [
+          'Once: Marketing → Settings → paste your Google review link.',
+          'Run "Review requests" after jobs are finished. Approve and send.',
+        ],
+        note: 'Never offer anything in return for a review — Google removes reviews that were paid for in any way.',
+      },
+      {
+        task: 'Email your regulars',
+        steps: [
+          'Run "Email campaign" and say what it is for, e.g. "spring check-ups".',
+          'Approve it, then Send. It goes only to customers who ticked "send me offers".',
+        ],
+        note: 'Every email carries an unsubscribe link, as the law requires. Someone who unsubscribes is taken off automatically.',
+      },
+      {
+        task: 'Let it run itself',
+        steps: ['Marketing → Settings → tick Autopilot → Save.'],
+        note: 'Every morning it drafts replies and review requests; every Monday, the week\'s posts and a market brief. Drafts only — nothing goes out until you approve it.',
+      },
+      {
+        task: 'Know when something is waiting for you',
+        steps: [
+          'The Marketing tab shows a count, e.g. "Marketing (5 to approve)".',
+          'Each morning after 7am, if drafts are waiting, you get an email saying how many and what they are.',
+          'To change where it goes, or turn it off: Marketing → Settings → Morning email. "Send me a test now" checks it arrives.',
+        ],
+        note: 'No email on days when nothing is waiting.',
+      },
+      {
+        task: 'See what is working',
+        steps: ['Marketing → Results.'],
+        note: '"Where customers heard about you" comes from the new question on the booking form, so it fills in over the first few weeks.',
       },
     ],
   },
   {
     heading: 'Your Prices',
-    blurb: 'Open "Owner Price Matrix". Only you see this.',
+    blurb: 'Open "My Rates". Only you see this.',
     items: [
       {
-        task: 'Change what you charge',
+        task: 'Set what you charge',
         steps: [
-          'Edit the labour rates and parts prices in the table.',
-          '"Print Matrix" gives you a paper copy for the wall.',
+          'Type your labor rate, shop supplies percentage and sales tax.',
+          'Check the price next to each service, change any that are wrong, and add or remove services.',
+          'Click "Save rates". New invoices use them from then on.',
         ],
-        note: 'Your cost and profit columns are for you only. Customers never see this screen.',
+        note: 'The first time you open it, the prices shown are the "starting at" prices your website shows customers. Nothing is used until you save. "Print" gives you a paper copy.',
       },
     ],
   },

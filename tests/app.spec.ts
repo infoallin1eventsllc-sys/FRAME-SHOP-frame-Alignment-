@@ -64,7 +64,12 @@ test.describe('The Frame Shop - Web Application End-to-End Tests', () => {
     await expect(trailValue).toBeVisible();
   });
 
-  test('Shop Admin Portal authenticates with PIN 1234 and shows command center', async ({ page }) => {
+  test('Shop Admin Portal authenticates with PIN 1234 and shows command center', async ({ page, request }) => {
+    // Its own booking to look for. This used to rely on demo customers the
+    // server invented on a fresh install, which it no longer does.
+    const { booking } = await (await request.post('/api/bookings', {
+      data: { name: 'Portal Check', phone: '8325550111', email: 'portal@example.com', bikeMake: 'Indian', bikeModel: 'Scout' },
+    })).json();
     await page.goto('/');
 
     // Scroll to footer where Owner Login button lives
@@ -93,11 +98,12 @@ test.describe('The Frame Shop - Web Application End-to-End Tests', () => {
     const exportBtn = page.getByRole('button', { name: /Invoices Excel/i });
     await expect(exportBtn).toBeVisible();
 
-    // Verify bookings are loaded (seed data should show 3 bookings)
-    const bookingCards = page.locator('[data-booking-id], .booking-card').or(
-      page.getByText(/FS-849201|FS-512039|FS-993102/)
-    );
-    await expect(bookingCards.first()).toBeVisible({ timeout: 5000 });
+    // Verify bookings are loaded
+    try {
+      await expect(page.getByText(`Ticket #${booking.ticketNumber}`)).toBeVisible({ timeout: 5000 });
+    } finally {
+      await request.delete(`/api/bookings/${booking.id}`);
+    }
   });
 
 });

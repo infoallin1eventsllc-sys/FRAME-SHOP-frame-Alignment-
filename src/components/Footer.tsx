@@ -1,6 +1,6 @@
 import React from 'react';
 import { SHOP_INFO } from '../data/shopData';
-import { Phone, MapPin, Instagram, Wrench, ShieldCheck, Lock } from 'lucide-react';
+import { Phone, Mail, MapPin, Instagram, Wrench, ShieldCheck, Lock } from 'lucide-react';
 import { Logo } from './Logo';
 import { MeridianLogo } from './MeridianLogo';
 
@@ -81,6 +81,12 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
                   {SHOP_INFO.phone}
                 </a>
               </div>
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
+                <a href={`mailto:${SHOP_INFO.email}`} className="text-zinc-300 hover:text-orange-500 break-all">
+                  {SHOP_INFO.email}
+                </a>
+              </div>
               <div className="flex items-start gap-2 text-zinc-300">
                 <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0 mt-0.5" />
                 <span>{SHOP_INFO.address}</span>
@@ -106,7 +112,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
             <a
               href={SHOP_INFO.instagramUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 text-zinc-400 hover:text-white pt-1 text-xs uppercase font-bold tracking-wider"
             >
               <Instagram className="w-4 h-4 text-orange-500" />
@@ -120,6 +126,12 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
         <div className="pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-zinc-500 text-[11px] font-bold uppercase tracking-wider">
           <div className="flex items-center gap-4 flex-wrap">
             <span>© {new Date().getFullYear()} The Frame Shop. All Rights Reserved.</span>
+            <nav aria-label="Policies" className="flex items-center gap-3 flex-wrap border-l border-zinc-800 pl-4">
+              <a href="/privacy" className="text-zinc-400 hover:text-orange-500 transition-colors">Privacy</a>
+              <a href="/terms" className="text-zinc-400 hover:text-orange-500 transition-colors">Terms</a>
+              <a href="/refunds" className="text-zinc-400 hover:text-orange-500 transition-colors">Refunds</a>
+              <a href="/cookies" className="text-zinc-400 hover:text-orange-500 transition-colors">Cookies</a>
+            </nav>
             {onOpenTracker && (
               <button
                 onClick={onOpenTracker}
@@ -147,7 +159,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
 
         {/* Studio credit */}
         <div className="pt-8 mt-6 border-t border-zinc-900 flex flex-col items-center gap-3 text-center">
-          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#F7F8F3]">
             This website built by
           </span>
 
@@ -156,9 +168,9 @@ export const Footer: React.FC<FooterProps> = ({ onOpenBooking, onNavigate, onOpe
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Meridian Interface"
-            className="opacity-85 hover:opacity-100 transition-opacity"
+            className="transition-opacity hover:opacity-80"
           >
-            <MeridianLogo size={150} />
+            <MeridianLogo size={168} />
           </a>
 
           <p className="max-w-md text-[11px] text-zinc-500 font-normal normal-case tracking-normal leading-relaxed">

@@ -38,9 +38,12 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
               >
                 <button
                   onClick={() => toggleFaq(idx)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${idx}`}
+                  id={`faq-question-${idx}`}
                   className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-50/60 transition-colors"
                 >
-                  <span className="font-black text-zinc-900 text-base sm:text-lg uppercase tracking-tight italic">
+                  <span className="font-bold text-zinc-900 text-base sm:text-lg uppercase tracking-tight">
                     {faq.q}
                   </span>
                   <div className="bg-zinc-50 border border-zinc-200 p-2 text-orange-500 flex-shrink-0">
@@ -49,7 +52,7 @@ export const FaqSection: React.FC<{ onOpenBooking: () => void }> = ({ onOpenBook
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-6 sm:px-6 sm:pb-6 text-zinc-700 text-sm sm:text-base leading-relaxed border-t border-zinc-200 pt-4 font-normal">
+                  <div id={`faq-answer-${idx}`} role="region" aria-labelledby={`faq-question-${idx}`} className="px-5 pb-6 sm:px-6 sm:pb-6 text-zinc-700 text-sm sm:text-base leading-relaxed border-t border-zinc-200 pt-4 font-normal">
                     {faq.a}
                   </div>
                 )}
