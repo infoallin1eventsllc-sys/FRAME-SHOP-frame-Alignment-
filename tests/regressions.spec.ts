@@ -228,6 +228,9 @@ test.describe('When the network fails, say so', () => {
       const ph = (await input.getAttribute('placeholder')) || '';
       if (type === 'tel') await input.fill('8325550100');
       else if (type === 'email') await input.fill('offline@example.com');
+      else if (/2022/.test(ph)) await input.fill('2021');
+      else if (/Harley/i.test(ph)) await input.fill('Harley-Davidson');
+      else if (/Glide/i.test(ph)) await input.fill('Road Glide');
       else if (/Full Name/i.test(ph)) await input.fill('Offline Rider');
     }
     await modal.locator('button[type="submit"]').last().click();
@@ -373,4 +376,18 @@ test.describe('Search and sharing', () => {
       expect(content, `${sel} missing or empty`).toBeTruthy();
     }
   });
+});
+
+test('the booking form starts with an empty bike, so nobody books the wrong one by accident', async ({ page }) => {
+  // It used to open with "2021 Harley-Davidson Road Glide" typed in; a rider
+  // who skimmed past it would book a bike they don't own.
+  await page.goto('/');
+  await page.locator('#hero-book-now-btn').click();
+  for (const id of ['#booking-year', '#booking-make', '#booking-model']) {
+    const field = page.locator(id);
+    if (await field.count()) await expect(field).toHaveValue('');
+  }
+  await expect(page.locator('input[placeholder*="2022"]')).toHaveValue('');
+  await expect(page.locator('input[placeholder*="Harley"]')).toHaveValue('');
+  await expect(page.locator('input[placeholder*="Glide"]').first()).toHaveValue('');
 });

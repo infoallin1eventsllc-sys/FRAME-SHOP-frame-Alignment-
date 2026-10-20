@@ -38,7 +38,9 @@ export function installDemo() {
     tag.setAttribute('role', 'note');
     tag.setAttribute('data-testid', 'demo-label');
     tag.style.cssText = [
-      'position:fixed', 'right:12px', 'bottom:calc(76px + env(safe-area-inset-bottom))', 'z-index:70',
+      'position:fixed', 'right:12px', 'bottom:calc(76px + env(safe-area-inset-bottom))', // Above the phone's bottom menu (40), below every pop-up (50), so it never
+      // covers a form a visitor is filling in.
+      'z-index:45',
       'display:flex', 'align-items:center', 'gap:8px', 'padding:4px 4px 4px 10px',
       'background:#fef3c7', 'color:#78350f', 'border:2px solid #d97706',
       'font:700 11px/1.2 system-ui,-apple-system,sans-serif', 'letter-spacing:.04em',
