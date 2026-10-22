@@ -1,6 +1,34 @@
 # The Frame Shop — where things stand
 
-Last updated 8 October 2026. Start here next session.
+Last updated 22 October 2026. Start here next session.
+
+## Pick up here tomorrow (23 Oct)
+
+Otis wants a second, story-style video ad for the shop, built from the old
+website and Paul's Instagram (@_theframeshop), where Paul's own reels explain
+how alignment works. Storyboard approved for preview, nothing built yet.
+
+- **The story (9:16, ~35 s):** a technician walks around a Harley on the laser
+  bench explaining alignment → low shot down the laser line → keys handed to
+  the customer → customer rides off down a straight Texas road → the same end
+  card as the first ad. Voice-over lines are in the chat of 22 Oct and use only
+  facts on the site (no years in business, no frame counts).
+- **Storyboard stills (Higgsfield gpt_image_2_5, 1 credit total, same
+  technician in each):** jobs 26f989e5-70b1-41ac-85db-89eeb17d088b (walk-around),
+  27b1cd30-4861-4c50-b8d7-0bc838b12e87 (laser line),
+  699bb44a-ecc6-4dd7-b1ad-0505c84fb5e2 (handover),
+  88db64dc-f8b3-4e73-a045-84576cd0955c (ride-off). Use them as start frames.
+- **Quoted build costs (Higgsfield balance 281):** A. Kling 3.0 std, 4×10 s with
+  sound + separate narrator voice = 80; B. Wan 3.0 1080p with audio and face
+  references, 4×10 s = 140; C. Veo 3.1 fast 8 s with spoken lines, 4 clips = 128.
+  Veo 3.1 best quality is 80 per clip (over budget). Keep ~20 for a reshoot.
+  Recommended: A. **Otis has not chosen yet — ask before spending.**
+- **Open with Otis/Paul:** the man in the ad is an AI actor, not Paul (Paul
+  filming himself at the bench for 30 s would be the 0-credit, stronger
+  version); the old website's address (search didn't find it); Paul's Instagram
+  photos/reels can't be read from here (Instagram blocks the readers, vidIQ has
+  no credits) — Otis attaches the files he wants used.
+- The first ad (below) is done and waiting for Paul's approval.
 
 ## Where the work is
 
