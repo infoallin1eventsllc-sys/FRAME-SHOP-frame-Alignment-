@@ -59,6 +59,23 @@ misses a change — if a test sees old behaviour, restart the server.
   off (or use a custom domain) before using it for the real site.
 - claude.ai links send outsiders to a Claude sign-in. Don't send them to clients.
 
+## 22 Oct — a social video ad, cut from the hero clip (draft for Paul)
+
+- A 9:16 ad for Facebook/Instagram/TikTok, 18.6 s, 1080×1920, with the engine
+  sound. Built for 0 credits in the Higgsfield sandbox with ffmpeg from the
+  1080p hero clip: three headline beats over the clip ("EVERY PART." /
+  "BACK IN SPEC." / "RIDE STRAIGHT."), the site's header logo at the top,
+  one line of what the shop does under each beat, then a 3.5 s end card
+  ("BOOK YOUR INSPECTION", "Link in bio", address, phone). Copy uses only
+  the confirmed facts; nothing about years in business or frame counts.
+- File: Higgsfield media 26566ced-e7be-498e-8003-1393c8472eed,
+  https://d2ol7oe51mr4n9.cloudfront.net/user_3JCJestVZgBp8lJ2tJ8CJXNSkbz/26566ced-e7be-498e-8003-1393c8472eed.mp4
+  (not in git; Otis has it). The logo carries "EST. 1998" from the site
+  header — confirm that year with Paul before the ad runs anywhere.
+- Nothing is posted. Paul approves the ad first. Paid options quoted and not
+  used: a fresh Kling clip (10–20 credits) or Marketing Studio one-click ad
+  (75 credits).
+
 ## State at the end of 8 Oct — the hero video
 
 - The homepage hero is now a video: a CGI bike that comes apart into its
