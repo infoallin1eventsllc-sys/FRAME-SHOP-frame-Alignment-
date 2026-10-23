@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { ShieldAlert, CheckCircle2, ArrowRight, RefreshCw, Calendar, AlertTriangle, Gauge, Sparkles, Wrench, Cpu } from 'lucide-react';
 import { safeFetch } from '../utils/api';
+import { SHOP_INFO } from '../data/shopData';
+
+const DIAGNOSTIC_UNAVAILABLE =
+  `We couldn't reach the diagnostic tool just now. Call or text Paul on ${SHOP_INFO.phone} ` +
+  `and he'll talk the symptoms through with you.`;
 
 interface DiagnosticToolProps {
   onOpenBookingWithService: (serviceId: string) => void;
@@ -112,31 +117,20 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.diagnostic) {
-          setAiResult(data.diagnostic);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.diagnostic) {
+        setAiResult(data.diagnostic);
       } else {
-        const errData = await res.json();
-        setAiError(errData.error || 'Failed to generate AI diagnostic analysis.');
+        setAiError(data.error || DIAGNOSTIC_UNAVAILABLE);
       }
-    } catch (err) {
-      console.error('AI Diagnostic call error:', err);
-      // Fallback response for offline or preview mode
-      setAiResult({
-        diagnosisTitle: "3D Powertrain & Engine Mount Misalignment",
-        severityLevel: "Moderate Misalignment",
-        likelyCauses: [
-          "Motor mount isolator rubber bushing fatigue",
-          "Transmission top stabilizer tie-rod out of adjustment",
-          "Rear swingarm pivot axle non-parallel to front wheel"
-        ],
-        technicalExplanation: `Analysis for ${aiBikeModel}: High-speed instability and wobble often originate when motor torque forces the engine/transmission casing out of 3D parallel alignment with the frame backbone. A 3D laser scan on Paul's Frame Shooter alignment jig will measure exact millimeter offset.`,
-        recommendedServiceId: "powertrain-alignment",
-        recommendedServiceName: "3D Power Train Laser Alignment",
-        estimatedLaborHours: "1 - 2 Hours"
-      });
+    } catch {
+      // This used to show a fixed, made-up diagnosis — "engine mount
+      // misalignment, moderate severity", personalised with the rider's bike so
+      // it read as a real analysis — whatever symptoms they had typed. A rider
+      // describing a brake fault was told their engine mounts were out.
+      // Handling problems are a safety matter; never answer one with a guess
+      // dressed as a result. Say it did not work and point them to Paul.
+      setAiError(DIAGNOSTIC_UNAVAILABLE);
     } finally {
       setAiLoading(false);
     }
@@ -203,10 +197,12 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
         {/* Tab Selection */}
         <div className="flex justify-center mb-8">
-          <div className="bg-zinc-50 border border-zinc-200 p-1 inline-flex gap-1">
+          {/* Below ~360px this row pushed the GEMINI AI badge past the viewport and
+              the page scrolled sideways, so both rows wrap and padding eases in. */}
+          <div className="bg-zinc-50 border border-zinc-200 p-1 inline-flex flex-wrap justify-center gap-1 max-w-full">
             <button
               onClick={() => setActiveTab('guided')}
-              className={`px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3 sm:px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex flex-wrap items-center justify-center gap-2 ${
                 activeTab === 'guided'
                   ? 'bg-orange-600 text-white shadow-lg'
                   : 'text-zinc-600 hover:text-zinc-800'
@@ -218,7 +214,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
             <button
               onClick={() => setActiveTab('ai')}
-              className={`px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3 sm:px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all cursor-pointer flex flex-wrap items-center justify-center gap-2 ${
                 activeTab === 'ai'
                   ? 'bg-orange-600 text-white shadow-lg'
                   : 'text-zinc-600 hover:text-zinc-800'
@@ -232,7 +228,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
         </div>
 
         {/* Diagnostic Container */}
-        <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-10 shadow-2xl relative">
+        <div className="bg-zinc-50 border border-zinc-200 rounded-none p-6 sm:p-10 shadow-sm relative">
           
           {activeTab === 'guided' ? (
             /* Guided Questionnaire */
@@ -261,7 +257,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
               {/* Question Copy */}
               <div className="mb-8">
-                <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 mb-2 uppercase italic">
+                <h3 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-2 uppercase">
                   {QUESTIONS[currentStep].title}
                 </h3>
                 <p className="text-zinc-600 text-sm font-normal">
@@ -333,7 +329,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   )}
                   <div>
                     <div className="text-[10px] uppercase tracking-widest font-black text-orange-500">Diagnostic Verdict</div>
-                    <h3 className="text-xl sm:text-3xl font-black text-zinc-900 uppercase italic">
+                    <h3 className="text-xl sm:text-3xl font-bold text-zinc-900 uppercase">
                       {result?.title}
                     </h3>
                   </div>
@@ -353,7 +349,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               </p>
 
               <div>
-                <h4 className="text-xs font-black uppercase text-orange-600 tracking-widest mb-3">
+                <h4 className="text-xs font-bold uppercase text-orange-600 tracking-widest mb-3">
                   Recommended Shop Services
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -401,7 +397,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   <Sparkles className="w-3.5 h-3.5 text-amber-700" />
                   <span>Interactive AI Chassis Diagnostic Assistant</span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 uppercase italic">
+                <h3 className="text-2xl sm:text-3xl font-bold text-zinc-900 uppercase">
                   DESCRIBE YOUR MOTORCYCLE'S <span className="text-orange-600">HANDLING ISSUE</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-600 font-normal">
@@ -412,10 +408,11 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
               <form onSubmit={handleRunAiDiagnostic} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
+                    <label htmlFor="diag-bike" className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                       Motorcycle Model &amp; Year
                     </label>
                     <input
+                    id="diag-bike"
                       type="text"
                       value={aiBikeModel}
                       onChange={(e) => setAiBikeModel(e.target.value)}
@@ -426,10 +423,11 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
+                    <label htmlFor="diag-speed" className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                       Speed Range Where Issue Occurs
                     </label>
                     <select
+                    id="diag-speed"
                       value={aiSpeedRange}
                       onChange={(e) => setAiSpeedRange(e.target.value)}
                       className="w-full bg-white border border-zinc-200 focus:border-orange-600 text-zinc-900 p-3 text-sm focus:outline-none rounded-none"
@@ -444,10 +442,11 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
+                  <label htmlFor="diag-symptoms" className="block text-xs font-black uppercase text-zinc-700 tracking-widest mb-1.5">
                     Describe Handling Symptoms or Modifications
                   </label>
                   <textarea
+                    id="diag-symptoms"
                     value={aiSymptom}
                     onChange={(e) => setAiSymptom(e.target.value)}
                     placeholder="e.g. When taking my hands slightly off the handlebars at 70mph, the rear bagger end sways left and right. Recently had a 128ci kit installed and hit a freeway bump..."
@@ -511,13 +510,13 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({ onOpenBookingWit
 
               {/* AI Diagnostic Output Card */}
               {aiResult && (
-                <div className="bg-white border-2 border-orange-600/80 p-6 space-y-5 animate-in fade-in duration-300 shadow-2xl">
+                <div className="bg-white border-2 border-orange-600/80 p-6 space-y-5 animate-in fade-in duration-300 shadow-sm">
                   <div className="flex items-center justify-between border-b border-zinc-200 pb-3 flex-wrap gap-2">
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 border border-amber-300">
                         {aiResult.severityLevel}
                       </span>
-                      <h4 className="text-xl sm:text-2xl font-black text-zinc-900 uppercase italic mt-2">
+                      <h4 className="text-xl sm:text-2xl font-bold text-zinc-900 uppercase mt-2">
                         {aiResult.diagnosisTitle}
                       </h4>
                     </div>

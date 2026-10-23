@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SHOP_INFO } from '../data/shopData';
 import { Phone, MapPin, Clock, Calendar, Menu, X, ShieldCheck } from 'lucide-react';
 import { Logo } from './Logo';
@@ -13,7 +13,27 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpenAdmin, onOpenTracker }) => {
   const [isScrolled, setIsStyleScrolled] = useState(false);
   const [mobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isOpenNow, setIsOpenNow] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // The header is fixed, so it sits on top of the page rather than pushing it
+  // down. Its height is not constant — the info bar appears at md, the nav wraps
+  // at xl, and the whole thing shrinks on scroll — so anything below it cannot
+  // use a hardcoded offset. Publish the measured height and let the hero pad
+  // itself to match.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () =>
+      document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    window.addEventListener('resize', publish);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', publish);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,16 +45,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
     };
     window.addEventListener('scroll', handleScroll);
 
-    // Calculate shop status (Tue-Sat, 9AM-6PM approximate for UI indicator)
-    const now = new Date();
-    const day = now.getDay(); // 0 is Sun, 2 is Tue, 6 is Sat
-    const hour = now.getHours();
-    if (day >= 2 && day <= 6 && hour >= 9 && hour < 18) {
-      setIsOpenNow(true);
-    } else {
-      setIsOpenNow(false);
-    }
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -44,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 transition-all duration-300">
+    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-40 transition-all duration-300">
       {/* Top Banner Info Bar */}
       <div className="bg-zinc-950 border-b border-zinc-800 text-xs text-zinc-400 py-2 px-6 hidden md:block font-sans">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -62,19 +72,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
             </div>
             <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
               <Clock className="w-3.5 h-3.5 text-orange-600" />
-              <span>TUE - SAT // BY APPOINTMENT ONLY</span>
+              <span>Tue – Sat · By appointment only</span>
             </div>
           </div>
 
           <div className="flex items-center gap-6 text-[11px] font-bold uppercase tracking-widest">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-none ${isOpenNow ? 'bg-emerald-500 animate-pulse' : 'bg-orange-600'}`}></span>
-              <span className="text-zinc-300">{isOpenNow ? 'Shop Open Today' : 'By Appointment Only'}</span>
-            </div>
             <a 
               href={SHOP_INFO.instagramUrl} 
               target="_blank" 
-              rel="noreferrer" 
+              rel="noopener noreferrer" 
               className="text-zinc-400 hover:text-orange-500 transition-colors"
             >
               IG {SHOP_INFO.instagramHandle}
@@ -102,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
                 THE FRAME SHOP <span className="text-orange-600">ALIGNMENT</span>
               </div>
               <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">
-                SPRING, TX // EST. 1998
+                Spring, TX · Est. 1998
               </div>
             </div>
           </button>
@@ -129,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onNavigate, onOpe
             </button>
             <button 
               onClick={() => handleLinkClick('calculator')}
-              className="hover:text-orange-500 transition-colors py-1 cursor-pointer text-orange-500 font-extrabold"
+              className="hover:text-orange-500 transition-colors py-1 cursor-pointer"
             >
               Rake &amp; Trail
             </button>

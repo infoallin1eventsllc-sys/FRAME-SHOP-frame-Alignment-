@@ -41,12 +41,13 @@ export const Logo: React.FC<LogoProps> = ({
         shapeRendering="geometricPrecision"
         textRendering="geometricPrecision"
       >
-        <defs>
-          <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#f97316" />
-            <stop offset="100%" stopColor="#ea580c" />
-          </linearGradient>
-        </defs>
+        {/* No <defs> here on purpose. This SVG previously declared a
+            linearGradient id="orangeGrad" that nothing referenced. Logo renders
+            three times per page (navbar, hero, footer), so that one unused
+            definition produced three elements sharing an id — invalid, and a
+            trap for any future fill="url(#orangeGrad)", which resolves to the
+            first match in the document rather than the one in its own SVG.
+            If a gradient is needed later, give it an id from React's useId(). */}
 
         {/* Outer Heavy Diamond Border */}
         <polygon

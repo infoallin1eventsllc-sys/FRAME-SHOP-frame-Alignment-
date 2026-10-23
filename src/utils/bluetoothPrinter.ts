@@ -25,15 +25,24 @@ export function buildEscPosWorkOrderPayload(
   supplies: number,
   tax: number,
   total: number,
-  notes?: string
+  paid: number,
+  balance: number
 ): Uint8Array {
-  const encoder = new TextEncoder();
   const buffer: number[] = [];
 
-  // Helper to add ASCII bytes
+  // Receipt printers speak plain ASCII. UTF-8 for an accent or a long dash
+  // prints as two or three garbage characters, so fold them down first.
+  const toAscii = (text: string) =>
+    text
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u2012-\u2015]/g, '-')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[^\x0A\x20-\x7E]/g, '?');
+
   const addText = (text: string) => {
-    const bytes = encoder.encode(text);
-    bytes.forEach((b) => buffer.push(b));
+    for (const ch of toAscii(text)) buffer.push(ch.charCodeAt(0));
   };
 
   const addBytes = (...bytes: number[]) => {
@@ -66,7 +75,8 @@ export function buildEscPosWorkOrderPayload(
 
   // Itemized List Header
   addBytes(ESC, 0x45, 1);
-  addText("ITEM                     QTY    TOTAL\n");
+  // 18 + 1 + 4 + 1 + 8 = 32 characters, the width of a 58mm receipt, matching the rows below.
+  addText(`${'ITEM'.padEnd(18)} ${'QTY'.padStart(4)} ${'TOTAL'.padStart(8)}\n`);
   addBytes(ESC, 0x45, 0);
   addText("--------------------------------\n");
 
@@ -83,14 +93,14 @@ export function buildEscPosWorkOrderPayload(
   addText(`SALES TAX:            $${tax.toFixed(2).padStart(8, ' ')}\n`);
   addBytes(ESC, 0x45, 1);
   addBytes(ESC, 0x21, 0x10); // Double height
-  addText(`TOTAL DUE:            $${total.toFixed(2)}\n`);
+  addText(`TOTAL:                $${total.toFixed(2).padStart(8, ' ')}\n`);
   addBytes(ESC, 0x21, 0x00); // Normal
   addBytes(ESC, 0x45, 0);
-
-  if (notes) {
-    addText("--------------------------------\n");
-    addText(`MECHANIC NOTES:\n${notes}\n`);
-  }
+  if (paid > 0) addText(`PAID:                -$${paid.toFixed(2).padStart(8, ' ')}\n`);
+  addBytes(ESC, 0x45, 1);
+  addText(`BALANCE DUE:          $${balance.toFixed(2).padStart(8, ' ')}\n`);
+  addBytes(ESC, 0x45, 0);
+  // Paul's private notes are never printed: the customer signs this copy.
 
   addText("\n--------------------------------\n");
   addBytes(ESC, 0x61, 1); // Center

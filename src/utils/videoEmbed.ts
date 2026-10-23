@@ -46,9 +46,24 @@ function originParam(): string {
   return `&origin=${encodeURIComponent(window.location.origin)}`;
 }
 
-export function parseVideoUrl(rawUrl: string): ParsedVideo {
+export interface ParseOptions {
+  /**
+   * Build a URL that starts playing on its own, without anyone pressing play.
+   *
+   * Every current browser refuses to autoplay a video with sound until the
+   * viewer has interacted with the page — so an autostarting player MUST also
+   * be muted, or it is simply blocked and shows a frozen first frame. Muted is
+   * therefore not a preference here; it is the price of starting at all.
+   * Looping comes with it, since a short clip that autostarts and then stops
+   * on a dead frame looks broken.
+   */
+  autostart?: boolean;
+}
+
+export function parseVideoUrl(rawUrl: string, opts: ParseOptions = {}): ParsedVideo {
   const url = (rawUrl || '').trim();
   if (!url) return { kind: 'unknown', originalUrl: rawUrl };
+  const { autostart = false } = opts;
 
   for (const pattern of YOUTUBE_PATTERNS) {
     const match = url.match(pattern);
@@ -58,7 +73,8 @@ export function parseVideoUrl(rawUrl: string): ParsedVideo {
         kind: 'youtube',
         id,
         // nocookie so viewers aren't tracked before they press play.
-        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&autoplay=1${originParam()}`,
+        // YouTube loops only when the playlist names the same video.
+        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&autoplay=1${autostart ? `&mute=1&loop=1&playlist=${id}&playsinline=1` : ''}${originParam()}`,
         thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
         originalUrl: url,
       };
@@ -72,7 +88,8 @@ export function parseVideoUrl(rawUrl: string): ParsedVideo {
       return {
         kind: 'vimeo',
         id,
-        embedUrl: `https://player.vimeo.com/video/${id}?autoplay=1`,
+        // dnt=1: Vimeo's "do not track" — no cookies or viewing analytics.
+        embedUrl: `https://player.vimeo.com/video/${id}?dnt=1&autoplay=1${autostart ? '&muted=1&loop=1&playsinline=1' : ''}`,
         originalUrl: url,
       };
     }
